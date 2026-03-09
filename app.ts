@@ -1,24 +1,21 @@
 import express from 'express';
+import cors from 'cors';
 import config from './config/config.js';
 import { db } from './db/index.js';
 import { users } from './db/schema.js';
 import { chat, translateToFrench } from './services/cohere.js';
+import authRouter from './routes/auth.js';
+import apiKeysRouter from './routes/api_key.js';
+import { apiKeyMiddleware } from './middleware/api_key.js';
 const { port, nodeEnv } = config;
 
 
 const app = express();
 
+app.use(cors());
+app.use(express.json());
 
-
-app.get("/", async (req, res) => {
-    try{    
-            await db.insert(users).values({ email: "fa@gmail.com", name: 'fa' });
-    }catch(err){
-        console.error("Error inserting user:", err);    
-    }
-    res.status(200).send("Hello from the EdTech API!");
-    
-});
+// Translation route (no API key required for demo)
 app.get("/translation", async (req, res) => {
     try {
         const text = req.query.text as string;
@@ -44,6 +41,18 @@ app.get("/translation", async (req, res) => {
         res.status(500).json({ error: "Failed to translate content" });
     }
 });
+
+// API key middleware applies to routes below
+app.use(apiKeyMiddleware);
+
+
+app.use("/api/auth", authRouter);
+app.use("/api/keys", apiKeysRouter);
+
+app.get("/test", (req, res) => {
+    console.log(req.apiKey);
+    res.send("Test");
+})
 
 // Sample Cohere API endpoint
 app.get("/cohere/:message", async (req, res) => {
