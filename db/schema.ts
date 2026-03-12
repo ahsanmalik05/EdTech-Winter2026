@@ -22,7 +22,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   // this will be hashed
   password: varchar("password", { length: 255 }).notNull(),
-  lastWorksheetId: integer("last_worksheet_id").references(() => worksheets.id),
+  lastWorksheetId: integer("last_worksheet_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
