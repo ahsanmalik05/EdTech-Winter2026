@@ -42,3 +42,37 @@ export const getClassesByTeacherId = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Failed to fetch classes" });
   }
 };
+
+export const getClassesByStudentId = async (req: Request, res: Response) => {
+  try {
+    const studentId = parseInt(req.params.studentId as string, 10);
+
+    if (Number.isNaN(studentId)) {
+      return res.status(400).json({ error: "Invalid student id" });
+    }
+
+    const classes = await db
+      .select({
+        id: classrooms.id,
+        name: classrooms.name,
+        classCode: classrooms.classCode,
+        ownerUserId: classrooms.ownerUserId,
+        createdAt: classrooms.createdAt,
+        updatedAt: classrooms.updatedAt,
+      })
+      .from(classrooms)
+      .innerJoin(
+        classroom_memberships,
+        and(
+          eq(classroom_memberships.classroomId, classrooms.id),
+          eq(classroom_memberships.userId, studentId),
+          eq(classroom_memberships.role, "student"),
+        ),
+      );
+
+    return res.status(200).json({ classes });
+  } catch (error) {
+    console.error("Error fetching student classes:", error);
+    return res.status(500).json({ error: "Failed to fetch classes" });
+  }
+};
