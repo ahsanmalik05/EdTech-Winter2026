@@ -8,6 +8,13 @@
       "when": 1772056344297,
       "tag": "0000_oval_giant_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773349008914,
+      "tag": "0001_clear_jigsaw",
+      "breakpoints": true
     }
   ]
 }
