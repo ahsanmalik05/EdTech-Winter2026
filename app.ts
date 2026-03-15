@@ -9,8 +9,8 @@ import apiKeysRouter from './routes/api_key.js';
 import classroomsRouter from './routes/classrooms.js';
 import worksheetsRouter from './routes/worksheets.js';
 import { apiKeyMiddleware } from './middleware/api_key.js';
+import languagesRouter from './routes/languages.js';
 const { port, nodeEnv } = config;
-
 
 const app = express();
 
@@ -52,6 +52,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/keys", apiKeysRouter);
 app.use("/api/classrooms", classroomsRouter);
 app.use("/api/worksheets", worksheetsRouter);
+app.use("/api/languages", languagesRouter);
 
 app.get("/test", (req, res) => {
     console.log(req.apiKey);

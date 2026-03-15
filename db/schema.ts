@@ -27,6 +27,12 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const languages = pgTable("languages", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  code: varchar("code", { length: 16 }).notNull().unique(),
+});
+
 export const api_keys = pgTable("api_keys", {
   id: serial("id").primaryKey(),
   users_id: serial("users_id")
