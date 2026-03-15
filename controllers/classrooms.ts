@@ -2,13 +2,14 @@ import type { Request, Response } from "express";
 import { and, eq, or } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { classroom_memberships, classrooms } from "../db/schema.js";
+import type { GetClassroomsByTeacherResponse, GetClassroomsByStudentResponse, ErrorResponse } from "../types/index.js";
 
-export const getClassesByTeacherId = async (req: Request, res: Response) => {
+export const getClassesByTeacherId = async (req: Request, res: Response): Promise<void> => {
   try {
     const teacherId = parseInt(req.params.teacherId as string, 10);
 
     if (Number.isNaN(teacherId)) {
-      return res.status(400).json({ error: "Invalid teacher id" });
+      return res.status(400).json({ error: "Invalid teacher id" } as ErrorResponse);
     }
 
     const classes = await db
@@ -36,19 +37,20 @@ export const getClassesByTeacherId = async (req: Request, res: Response) => {
         ),
       );
 
-    return res.status(200).json({ classes });
+    const response: GetClassroomsByTeacherResponse = { classes };
+    return res.status(200).json(response);
   } catch (error) {
     console.error("Error fetching teacher classes:", error);
-    return res.status(500).json({ error: "Failed to fetch classes" });
+    return res.status(500).json({ error: "Failed to fetch classes" } as ErrorResponse);
   }
 };
 
-export const getClassesByStudentId = async (req: Request, res: Response) => {
+export const getClassesByStudentId = async (req: Request, res: Response): Promise<void> => {
   try {
     const studentId = parseInt(req.params.studentId as string, 10);
 
     if (Number.isNaN(studentId)) {
-      return res.status(400).json({ error: "Invalid student id" });
+      return res.status(400).json({ error: "Invalid student id" } as ErrorResponse);
     }
 
     const classes = await db
@@ -70,9 +72,10 @@ export const getClassesByStudentId = async (req: Request, res: Response) => {
         ),
       );
 
-    return res.status(200).json({ classes });
+    const response: GetClassroomsByStudentResponse = { classes };
+    return res.status(200).json(response);
   } catch (error) {
     console.error("Error fetching student classes:", error);
-    return res.status(500).json({ error: "Failed to fetch classes" });
+    return res.status(500).json({ error: "Failed to fetch classes" } as ErrorResponse);
   }
 };
