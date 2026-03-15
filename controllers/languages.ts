@@ -22,12 +22,7 @@ import type { Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { languages } from "../db/schema.js";
-
-interface Language {
-    id: number;
-    name: string;
-    code: string;
-}
+import type { Language } from "../types/common.js";
 
 export const availableLanguages = async (req: Request, res: Response) => {
     try {
