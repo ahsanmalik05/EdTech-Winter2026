@@ -15,6 +15,13 @@
       "when": 1773349008914,
       "tag": "0001_clear_jigsaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773529974851,
+      "tag": "0002_chilly_mauler",
+      "breakpoints": true
     }
   ]
 }

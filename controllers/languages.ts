@@ -138,7 +138,7 @@ export const deleteLanguage = async (req: Request, res: Response) => {
         const deleteResult: Language[] = await db
             .delete(languages)
             .where(eq(languages.id, id))
-            .execute();
+            .returning();
 
         if (deleteResult.length === 0) {
             return res.status(404).json({ error: "Language not found" });
