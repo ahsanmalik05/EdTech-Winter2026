@@ -2,9 +2,10 @@ import type { Request, Response } from "express";
 import { eq, and } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { translation_log } from "../db/schema.js";
+import type { LogTranslationParams } from "../types/common.js";
 
 export const getTranslationLog = async (req: Request, res: Response) => {
-    try{
+    try {
         const logEntries = await db
             .select()
             .from(translation_log)
@@ -15,23 +16,31 @@ export const getTranslationLog = async (req: Request, res: Response) => {
         console.error("Error fetching translation log:", error);
         return res.status(500).json({ error: "Failed to fetch translation log" });
     }
-}
+};
 
 export const getTranslationLogEntry = async (req: Request, res: Response) => {
     try {
-        const { user_id, source_language, target_language } = req.query;
+        const { user_id, target_language } = req.query;
 
-        if (!user_id && !source_language && !target_language) {
-            return res.status(400).json({ error: "Provide at least one filter: user_id, source_language, or target_language" });
+        if (!user_id && !target_language) {
+            return res.status(400).json({ error: "Provide at least one filter: user_id or target_language" });
         }
-        
-        if (user_id && (typeof user_id !== 'string' || isNaN(Number(user_id)))) {
-            return res.status(400).json({ error: "user_id must be a valid number" });
+
+        if (user_id !== undefined) {
+            const parsed = Number(user_id);
+            if (typeof user_id !== "string" || !Number.isInteger(parsed) || parsed <= 0) {
+                return res.status(400).json({ error: "user_id must be a positive integer" });
+            }
+        }
+
+        if (target_language !== undefined) {
+            if (typeof target_language !== "string" || target_language.trim() === "") {
+                return res.status(400).json({ error: "target_language must be a non-empty string" });
+            }
         }
 
         const conditions = [];
         if (user_id) conditions.push(eq(translation_log.userId, Number(user_id)));
-        if (source_language) conditions.push(eq(translation_log.sourceLanguage, String(source_language)));
         if (target_language) conditions.push(eq(translation_log.targetLanguage, String(target_language)));
 
         const query = db.select().from(translation_log);
@@ -45,36 +54,66 @@ export const getTranslationLogEntry = async (req: Request, res: Response) => {
         console.error("Error fetching translation log entry:", error);
         return res.status(500).json({ error: "Failed to fetch translation log entry" });
     }
-}
+};
 
 export const addTranslationLogEntry = async (req: Request, res: Response) => {
     try {
-        const { userId, sourceLanguage, targetLanguage, originalText, translatedText, latency, cached } = req.body;
+        const {
+            userId,
+            sourceText,
+            translatedText,
+            targetLanguage,
+            model,
+            tokenCount,
+            latencyMs,
+        }: LogTranslationParams = req.body;
 
         if (
             userId === undefined ||
-            !sourceLanguage ||
-            !targetLanguage ||
-            !originalText ||
-            !translatedText ||
-            latency === undefined ||
-            cached === undefined
+            sourceText === undefined ||
+            targetLanguage === undefined ||
+            model === undefined ||
+            latencyMs === undefined
         ) {
-            return res.status(400).json({ error: "Missing required fields: userId, sourceLanguage, targetLanguage, originalText, translatedText, latency, cached" });
+            return res.status(400).json({
+                error: "Missing required fields: userId, sourceText, targetLanguage, model, latencyMs",
+            });
         }
 
-        if (isNaN(Number(userId))) {
-            return res.status(400).json({ error: "userId must be a valid number" });
+        if (typeof userId !== "number" || !Number.isInteger(userId) || userId <= 0) {
+            return res.status(400).json({ error: "userId must be a positive integer" });
+        }
+
+        if (typeof sourceText !== "string" || sourceText.trim() === "") {
+            return res.status(400).json({ error: "sourceText must be a non-empty string" });
+        }
+
+        if (typeof targetLanguage !== "string" || targetLanguage.trim() === "") {
+            return res.status(400).json({ error: "targetLanguage must be a non-empty string" });
+        }
+
+        if (typeof model !== "string" || model.trim() === "") {
+            return res.status(400).json({ error: "model must be a non-empty string" });
+        }
+
+        if (typeof latencyMs !== "number" || !Number.isFinite(latencyMs) || latencyMs < 0) {
+            return res.status(400).json({ error: "latencyMs must be a non-negative number" });
+        }
+
+        if (tokenCount !== undefined) {
+            if (typeof tokenCount !== "number" || !Number.isInteger(tokenCount) || tokenCount < 0) {
+                return res.status(400).json({ error: "tokenCount must be a non-negative integer" });
+            }
         }
 
         await db.insert(translation_log).values({
-            userId: Number(userId),
-            sourceLanguage: String(sourceLanguage),
-            targetLanguage: String(targetLanguage),
-            originalText: String(originalText),
-            translatedText: String(translatedText),
-            latency: Number(latency),
-            cached: Boolean(cached),
+            userId,
+            sourceText: sourceText.trim(),
+            translatedText: translatedText ?? null,
+            targetLanguage: targetLanguage.trim(),
+            model: model.trim(),
+            tokenCount: tokenCount ?? null,
+            latencyMs,
             createdAt: new Date(),
         } as any).execute();
 
@@ -83,25 +122,30 @@ export const addTranslationLogEntry = async (req: Request, res: Response) => {
         console.error("Error adding translation log entry:", error);
         return res.status(500).json({ error: "Failed to add translation log entry" });
     }
-}
+};
 
 export const deleteTranslationLogEntry = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
-        if (!id || isNaN(Number(id))) {
-            return res.status(400).json({ error: "Invalid or missing id parameter" });
+        const parsed = Number(id);
+        if (!id || !Number.isInteger(parsed) || parsed <= 0) {
+            return res.status(400).json({ error: "id must be a positive integer" });
         }
 
-        const deleteResult = await db
+        const deleted = await db
             .delete(translation_log)
-            .where(eq(translation_log.id, Number(id)))
+            .where(eq(translation_log.id, parsed))
+            .returning()
             .execute();
 
+        if (deleted.length === 0) {
+            return res.status(404).json({ error: `Translation log entry with id ${id} not found` });
+        }
+
         return res.status(200).json({ message: "Translation log entry deleted successfully" });
-    
     } catch (error) {
         console.error("Error deleting translation log entry:", error);
         return res.status(500).json({ error: "Failed to delete translation log entry" });
     }
-}
+};
