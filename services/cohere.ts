@@ -144,5 +144,69 @@ ${content}`;
     : null;
 }
 
+/**
+ * Reference-free COMET-style quality estimator.
+ * Prompts the LLM to score its own translation on a 0–1 scale
+ * (analogous to wmt22-cometkiwi-da QE mode, but running in-process).
+ *
+ * @param sourceText      - Original text before translation
+ * @param translatedText  - The produced translation
+ * @param sourceLang      - Source language name (e.g. "English")
+ * @param targetLang      - Target language name (e.g. "French")
+ * @param model           - Cohere model to use
+ * @returns score in [0, 1]
+ */
+export async function scoreCOMET(
+  sourceText: string,
+  translatedText: string,
+  sourceLang: string = 'English',
+  targetLang: string = 'French',
+  model: string = 'command-a-03-2025'
+): Promise<number> {
+  const prompt = `You are an expert translation quality evaluator using the COMET reference-free (quality estimation) methodology.
+
+Evaluate the following translation from ${sourceLang} to ${targetLang} on a scale from 0.0 to 1.0, where:
+- 1.0 = perfect, fluent, and meaning-preserving
+- 0.75–0.99 = good quality with minor issues
+- 0.50–0.74 = acceptable but with noticeable errors
+- 0.25–0.49 = poor quality, significant meaning loss
+- 0.0–0.24 = very poor or completely wrong
+
+SOURCE (${sourceLang}):
+${sourceText}
+
+TRANSLATION (${targetLang}):
+${translatedText}
+
+Respond with ONLY a JSON object in this exact format (no markdown, no explanation):
+{"score": <number between 0.0 and 1.0>}`;
+
+  const response = await cohere.chat({
+    model,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const raw = response.message?.content?.[0]?.type === 'text'
+    ? response.message.content[0].text.trim()
+    : '{"score": 0.5}';
+
+  try {
+    // Strip any accidental markdown fences
+    const cleaned = raw.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    const score = Number(parsed.score);
+    // Clamp to [0, 1]
+    return Math.min(1, Math.max(0, isNaN(score) ? 0.5 : score));
+  } catch {
+    // Fallback: try to extract a bare float from the response
+    const match = raw.match(/(\d+(?:\.\d+)?)/);
+    if (match && match[1] !== undefined) {
+      const score = parseFloat(match[1]);
+      return Math.min(1, Math.max(0, isNaN(score) ? 0.5 : score));
+    }
+    return 0.5; // neutral fallback
+  }
+}
+
 export { cohere, SELF_ASSESSMENT_CONTENT };
 export default cohere;

@@ -1,9 +1,47 @@
 import { useState } from "react";
-import { translateText } from "../services/translation";
+import { translateText, type TranslationResult } from "../services/translation";
+
+const LOW_CONFIDENCE_THRESHOLD = 0.75;
+
+function ConfidenceBadge({ score }: { score: number }) {
+  const pct = Math.round(score * 100);
+  const color =
+    score >= LOW_CONFIDENCE_THRESHOLD
+      ? "bg-green-100 text-green-800 border-green-300"
+      : "bg-yellow-100 text-yellow-800 border-yellow-300";
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-semibold ${color}`}
+      title="COMET reference-free quality score (0–1)"
+    >
+      <svg
+        className="w-3 h-3"
+        viewBox="0 0 16 16"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <circle cx="8" cy="8" r="8" opacity="0.2" />
+        <circle
+          cx="8"
+          cy="8"
+          r="5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeDasharray={`${pct * 0.314} 31.4`}
+          strokeLinecap="round"
+          transform="rotate(-90 8 8)"
+        />
+      </svg>
+      Confidence: {score.toFixed(2)}
+    </span>
+  );
+}
 
 function TranslationPage() {
   const [inputText, setInputText] = useState("");
-  const [translatedText, setTranslatedText] = useState("");
+  const [result, setResult] = useState<TranslationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -11,11 +49,11 @@ function TranslationPage() {
     if (!inputText.trim()) return;
     setIsLoading(true);
     setError("");
-    setTranslatedText("");
+    setResult(null);
 
     try {
-      const result = await translateText(inputText);
-      setTranslatedText(result);
+      const data = await translateText(inputText);
+      setResult(data);
     } catch {
       setError("Translation failed. Please try again.");
     } finally {
@@ -41,9 +79,7 @@ function TranslationPage() {
         <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
           Translation Demo
         </h1>
-        <p className="text-center text-gray-500 mb-8">
-          English → French
-        </p>
+        <p className="text-center text-gray-500 mb-8">English → French</p>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -75,7 +111,7 @@ function TranslationPage() {
           disabled={isLoading || !inputText.trim()}
           className="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          {isLoading ? "Translating..." : "Translate"}
+          {isLoading ? "Translating…" : "Translate"}
         </button>
 
         {error && (
@@ -84,13 +120,36 @@ function TranslationPage() {
           </div>
         )}
 
-        {translatedText && (
+        {result && (
           <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Translation (French)
-            </label>
+            {/* Low-confidence warning banner */}
+            {result.lowConfidence && (
+              <div
+                role="alert"
+                className="mb-3 flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-300 rounded-lg text-yellow-800 text-sm"
+              >
+                <span className="text-lg leading-none" aria-hidden="true">
+                  ⚠
+                </span>
+                <span>
+                  <strong>Low-confidence translation</strong> — the quality
+                  score is below the recommended threshold (
+                  {Math.round(LOW_CONFIDENCE_THRESHOLD * 100)}%). Please review
+                  the output carefully before use.
+                </span>
+              </div>
+            )}
+
+            {/* Translation output header with confidence badge */}
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Translation (French)
+              </label>
+              <ConfidenceBadge score={result.confidence} />
+            </div>
+
             <div className="w-full p-4 bg-white border border-gray-300 rounded-lg text-gray-800 whitespace-pre-wrap min-h-[100px]">
-              {translatedText}
+              {result.translatedText}
             </div>
           </div>
         )}
