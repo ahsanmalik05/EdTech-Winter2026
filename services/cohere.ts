@@ -1,6 +1,8 @@
 import { CohereClientV2 } from 'cohere-ai';
 import OpenAI from 'openai';
 import config from '../config/config.js';
+import { matchTerms, buildGlossaryPrompt } from './glossary.js';
+import { response } from 'express';
 
 const cohere = new CohereClientV2({
   token: config.cohereApiKey,
@@ -30,6 +32,10 @@ async function chatWithFallback(prompt: string, model: string) {
   });
 
   return fallback.output_text || null;
+}
+
+export async function chat(message: string, model: string = 'command-a-03-2025') {
+  return chatWithFallback(message, model);
 }
 
 export async function chatStream(
@@ -66,27 +72,42 @@ export async function embed(
 
 const SELF_ASSESSMENT_CONTENT = `I`;
 
-export async function translateToFrench(text: string, model: string = 'command-a-03-2025') {
-  const prompt = `You are a professional translator. Translate the following text into French. Provide ONLY the French translation, nothing else.
-
-Text to translate:
-${text}`;
-
-  return chatWithFallback(prompt, model);
+/**
+ * Translate text to French
+ */
+export async function translateToFrench(
+  text: string,
+  model: string = 'command-a-03-2025'
+) {
+  return translateContent(text, 'French', model);
 }
 
+/**
+ * Translate content to any target language with glossary-aware context injection.
+ * Matches glossary terms in the source text and injects their definitions into
+ * the system prompt so the LLM produces culturally and linguistically appropriate
+ * translations rather than literal word-for-word output.
+ */
 export async function translateContent(
   content: string,
   targetLanguage: string,
   model: string = 'command-a-03-2025'
 ) {
-  const prompt = `You are a professional translator. Translate the following content into ${targetLanguage}. Maintain the same structure, formatting, and tone. Provide ONLY the translated text without any explanations.
+  const matched = matchTerms(content);
+  const glossaryBlock = buildGlossaryPrompt(matched);
 
-CONTENT TO TRANSLATE:
+  const systemPrompt = `You are an expert educational content translator. Your task is to translate educational material while preserving pedagogical meaning and cultural relevance.
 
-${content}`;
+CRITICAL RULES:
+- Translate for MEANING, not word-for-word. Adapt analogies, idioms, and culturally-specific references to equivalents that resonate in the target culture and region.
+- For abbreviations/acronyms: use the target language and region's established equivalent if one exists. If none exists, keep the original with a brief inline explanation on first use.
+- Maintain the same educational register and tone.
+- Preserve all formatting, structure, and markup.
+- Provide ONLY the translated text without any explanations or commentary.
 
-  return chatWithFallback(prompt, model);
+${glossaryBlock}`.trim();
+
+  return chatWithFallback(systemPrompt, model);
 }
 
 
@@ -98,15 +119,32 @@ export async function translateContentStream(
   onToken: (token: string) => void,
   model: string = 'command-a-03-2025'
 ) {
-  const prompt = `You are a professional translator. Translate the following content into ${targetLanguage}. Maintain the same structure, formatting, and tone. Provide ONLY the translated text without any explanations.
+  const matched = matchTerms(content);
+  const glossaryBlock = buildGlossaryPrompt(matched);
 
-CONTENT TO TRANSLATE:
+  const systemPrompt = `You are an expert educational content translator. Your task is to translate educational material while preserving pedagogical meaning and cultural relevance.
 
-${content}`;
+CRITICAL RULES:
+- Translate for MEANING, not word-for-word. Adapt analogies, idioms, and culturally-specific references to equivalents that resonate in the target culture and region.
+- For abbreviations/acronyms: use the target language and region's established equivalent if one exists. If none exists, keep the original with a brief inline explanation on first use.
+- Maintain the same educational register and tone.
+- Preserve all formatting, structure, and markup.
+- Provide ONLY the translated text without any explanations or commentary.
+
+${glossaryBlock}`.trim();
 
   const stream = await cohere.chatStream({
     model,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      {
+        role: 'user',
+        content: `Translate the following into ${targetLanguage}:\n\n${content}`,
+      },
+    ],
   });
 
   for await (const event of stream) {

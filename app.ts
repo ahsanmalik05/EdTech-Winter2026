@@ -3,7 +3,8 @@ import cors from 'cors';
 import config from './config/config.js';
 import { db } from './db/index.js';
 import { users } from './db/schema.js';
-import { translateToFrench } from './services/cohere.js';
+import { chat, translateToFrench, translateContent } from './services/cohere.js';
+import { loadGlossaryCache } from './services/glossary.js';
 import authRouter from './routes/auth.js';
 import apiKeysRouter from './routes/api_key.js';
 import uploadRouter from './routes/upload.js';
@@ -27,20 +28,25 @@ app.use("/upload", uploadRouter);
 app.get("/translation", async (req, res) => {
     try {
         const text = req.query.text as string;
+        const targetLanguage = (req.query.lang as string) || "French";
+        
+        console.log("Received translation request for text:", text, "to:", targetLanguage);
+
 
         console.log("Received translation request for text:", text);
         if (!text) {
             return res.status(400).json({ error: "Text parameter is required" } as ErrorResponse);
         }
 
-        const translatedContent = await translateToFrench(text);
-
+        
+        const translatedContent = await translateContent(text, targetLanguage);
+        
         console.log("Original (English):", text);
-        console.log("Translated (French):", translatedContent);
-
+        console.log(`Translated (${targetLanguage}):`, translatedContent);
+        
         const response: TranslationResponse = {
             originalLanguage: "English",
-            targetLanguage: "French",
+            targetLanguage,
             originalText: text,
             translatedText: translatedContent || ""
         };
@@ -74,10 +80,16 @@ app.get("/cohere/:message", async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-    console.log(config);
-});
+async function start() {
+    const termCount = await loadGlossaryCache();
+    console.log(`Glossary cache loaded: ${termCount} terms`);
+
+    app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
+    });
+}
+
+start();
 
 export default app;
 
