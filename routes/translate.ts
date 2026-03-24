@@ -5,7 +5,7 @@ import { uploadPdf } from "../middleware/upload.js";
 
 const router = express.Router();
 
-router.post("/batch", batchTranslate);
+router.post("/batch", uploadPdf.array("pdfs"), batchTranslate);
 router.post("/pdf", uploadPdf.single("pdf"), uploadPdfFile);
 router.post("/pdf/stream", uploadPdf.single("pdf"), uploadPdfFileStream);
 
