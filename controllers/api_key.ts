@@ -5,7 +5,8 @@ import { api_keys, users } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import type { CreateApiKeyRequest, UpdateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse, ErrorResponse } from "../types/index.js";
+import type { CreateApiKeyRequest, UpdateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse } from "../types/apiKey.js";
+import type { ErrorResponse } from "../types/response.js";
 
 export const createApiKey = async (req: Request, res: Response) => {
   try {

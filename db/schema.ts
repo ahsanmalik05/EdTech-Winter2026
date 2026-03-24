@@ -2,6 +2,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   serial,
@@ -11,19 +12,13 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const scopes = pgEnum("scopes", ["read", "translate", "write"]);
-export const classroomRoles = pgEnum("classroom_roles", ["teacher", "student"]);
-export const worksheetProgress = pgEnum("worksheet_progress", [
-  "not_started",
-  "in_progress",
-  "completed",
-]);
+
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   // this will be hashed
   password: varchar("password", { length: 255 }).notNull(),
-  lastWorksheetId: integer("last_worksheet_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -48,67 +43,6 @@ export const api_keys = pgTable("api_keys", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const classrooms = pgTable("classrooms", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  classCode: varchar("class_code", { length: 24 }).notNull().unique(),
-  ownerUserId: integer("owner_user_id")
-    .notNull()
-    .references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const worksheets = pgTable("worksheets", {
-  id: serial("id").primaryKey(),
-  classroomId: integer("classroom_id").references(() => classrooms.id),
-  title: varchar("title", { length: 255 }).notNull(),
-  description: varchar("description", { length: 1000 }),
-  createdByUserId: integer("created_by_user_id")
-    .notNull()
-    .references(() => users.id),
-  isAssigned: boolean("is_assigned").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const classroom_memberships = pgTable("classroom_memberships", {
-  id: serial("id").primaryKey(),
-  classroomId: integer("classroom_id")
-    .notNull()
-    .references(() => classrooms.id),
-  userId: integer("user_id")
-    .notNull()
-    .references(() => users.id),
-  role: classroomRoles("role").notNull().default("student"),
-  joinedAt: timestamp("joined_at").defaultNow().notNull(),
-});
-
-export const user_worksheet_progress = pgTable("user_worksheet_progress", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id")
-    .notNull()
-    .references(() => users.id),
-  worksheetId: integer("worksheet_id")
-    .notNull()
-    .references(() => worksheets.id),
-  status: worksheetProgress("status").notNull().default("not_started"),
-  lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
-  completedAt: timestamp("completed_at"),
-});
-
-export type User = InferSelectModel<typeof users>;
-export type ApiKey = InferSelectModel<typeof api_keys>;
-export type Classroom = InferSelectModel<typeof classrooms>;
-export type Worksheet = InferSelectModel<typeof worksheets>;
-export type ClassroomMembership = InferSelectModel<typeof classroom_memberships>;
-export type UserWorksheetProgress = InferSelectModel<
-  typeof user_worksheet_progress
->;
-
-export type NewUser = InferInsertModel<typeof users>;
-export type NewApiKey = InferInsertModel<typeof api_keys>;
-<<<<<<< HEAD
 
 export const translation_glossary = pgTable("translation_glossary", {
   id: serial("id").primaryKey(),
@@ -123,13 +57,49 @@ export const translation_glossary = pgTable("translation_glossary", {
 
 export type GlossaryTerm = InferSelectModel<typeof translation_glossary>;
 export type NewGlossaryTerm = InferInsertModel<typeof translation_glossary>;
-=======
-export type NewClassroom = InferInsertModel<typeof classrooms>;
-export type NewWorksheet = InferInsertModel<typeof worksheets>;
-export type NewClassroomMembership = InferInsertModel<
-  typeof classroom_memberships
->;
-export type NewUserWorksheetProgress = InferInsertModel<
-  typeof user_worksheet_progress
->;
->>>>>>> dev
+
+
+export const sectionTypes = pgEnum("section_type", [
+  "introduction",
+  "model_assessment",
+  "self_review",
+]);
+
+export const templates = pgTable("templates", {
+  id: serial("id").primaryKey(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  topic: varchar("topic", { length: 255 }).notNull(),
+  gradeLevel: varchar("grade_level", { length: 100 }).notNull(),
+  version: integer("version").notNull().default(1),
+  isActive: boolean("is_active").notNull().default(true),
+  createdByUserId: integer("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const templateSections = pgTable("template_sections", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id")
+    .notNull()
+    .references(() => templates.id, { onDelete: "cascade" }),
+  sectionType: sectionTypes("section_type").notNull(),
+  content: text("content").notNull(),
+  orderIndex: integer("order_index").notNull(),
+});
+
+export const templateTranslations = pgTable("template_translations", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id")
+    .notNull()
+    .references(() => templates.id, { onDelete: "cascade" }),
+  languageCode: varchar("language_code", { length: 16 }).notNull(),
+  translatedContent: jsonb("translated_content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Template = InferSelectModel<typeof templates>;
+export type NewTemplate = InferInsertModel<typeof templates>;
+export type TemplateSection = InferSelectModel<typeof templateSections>;
+export type NewTemplateSection = InferInsertModel<typeof templateSections>;
+export type TemplateTranslation = InferSelectModel<typeof templateTranslations>;
+export type NewTemplateTranslation = InferInsertModel<typeof templateTranslations>;

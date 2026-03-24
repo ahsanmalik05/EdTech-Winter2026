@@ -4,7 +4,8 @@ import { users } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import type { AuthRegisterRequest, AuthLoginRequest, AuthResponse, MeResponse, ErrorResponse } from "../types/index.js";
+import type { AuthRegisterRequest, AuthLoginRequest, AuthResponse, MeResponse } from "../types/auth.js";
+import type { ErrorResponse } from "../types/response.js";
 
 export const register = async (req: Request, res: Response) => {
   try {

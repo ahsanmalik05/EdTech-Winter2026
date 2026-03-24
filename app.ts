@@ -10,17 +10,29 @@ import apiKeysRouter from './routes/api_key.js';
 import uploadRouter from './routes/upload.js';
 import { apiKeyMiddleware } from './middleware/api_key.js';
 import languagesRouter from './routes/languages.js';
+import translateRouter from './routes/translate.js';
 import type { TranslationResponse } from './types/translation.js';
 import type { CohereResponse, ErrorResponse } from './types/response.js';
-const { port, nodeEnv } = config;
+const { port, nodeEnv, frontendUrl } = config;
 
-import translateRouter from './routes/translate.js';
-
-console.log(config);
+const allowedOrigins = [frontendUrl];
+if (nodeEnv === 'development') {
+    allowedOrigins.push('http://localhost:5173');
+}
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. curl, Postman, server-to-server)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS: origin '${origin}' not allowed`));
+        }
+    },
+    credentials: true,
+}));
 app.use(express.json());
 
 app.use("/upload", uploadRouter);
