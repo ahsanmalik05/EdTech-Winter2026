@@ -1,18 +1,13 @@
 import type { Request, Response } from "express";
 import { translateBatch } from "../services/cohere.js";
+import { extractTextFromPdf, deleteFile } from "../services/pdf.js";
 
-interface BatchTranslateBody {
-  items: { id: string; text: string }[];
-  targetLanguage: string;
-  gradeLevel?: string;
-}
+export const batchTranslate = async (req: Request, res: Response) => {
+  const files = req.files as Express.Multer.File[] | undefined;
 
-export const batchTranslate = async (
-  req: Request<object, object, BatchTranslateBody>,
-  res: Response,
-) => {
   try {
-    const { items, targetLanguage, gradeLevel } = req.body;
+    const targetLanguage = req.body.targetLanguage as string | undefined;
+    const gradeLevel = req.body.gradeLevel as string | undefined;
 
     if (!targetLanguage || typeof targetLanguage !== "string") {
       res
@@ -21,25 +16,9 @@ export const batchTranslate = async (
       return;
     }
 
-    if (!Array.isArray(items) || items.length === 0) {
-      res
-        .status(400)
-        .json({ error: "items must be a non-empty array of { id, text } objects" });
+    if (!files || files.length === 0) {
+      res.status(400).json({ error: "At least one PDF file is required" });
       return;
-    }
-
-    for (const item of items) {
-      if (
-        !item ||
-        typeof item.id !== "string" ||
-        typeof item.text !== "string"
-      ) {
-        res.status(400).json({
-          error:
-            "Each item must have a string 'id' and a string 'text' property",
-        });
-        return;
-      }
     }
 
     if (gradeLevel !== undefined && typeof gradeLevel !== "string") {
@@ -49,11 +28,30 @@ export const batchTranslate = async (
       return;
     }
 
+    const items: { id: string; text: string }[] = [];
+
+    for (const file of files) {
+      const text = await extractTextFromPdf(file.path);
+      if (!text.trim()) {
+        res.status(422).json({
+          error: `Could not extract text from "${file.originalname}". The file may be image-based or empty.`,
+        });
+        return;
+      }
+      items.push({ id: file.originalname, text });
+    }
+
     const results = await translateBatch(items, targetLanguage, gradeLevel);
 
     res.status(200).json({ results });
   } catch (error) {
     console.error("Batch translation error:", error);
     res.status(500).json({ error: "Failed to perform batch translation" });
+  } finally {
+    if (files) {
+      for (const file of files) {
+        await deleteFile(file.path);
+      }
+    }
   }
 };
