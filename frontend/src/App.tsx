@@ -1,30 +1,51 @@
-import { useState } from 'react'
-import './App.css'
-import TranslationPage from './pages/TranslationPage'
-import PdfUploadDemo from './pages/PdfUploadDemo'
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import { Toaster } from 'react-hot-toast';
+import { darkTheme } from './theme/theme';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Layout } from './components/Layout';
+
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { Dashboard } from './pages/Dashboard';
+import { ApiKeys } from './pages/ApiKeys';
+import { Languages } from './pages/Languages';
+import { Templates } from './pages/Templates';
+import { Translate } from './pages/Translate';
+
+const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  return user ? <Layout>{children}</Layout> : <Navigate to="/login" />;
+};
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<'translation' | 'pdf'>('translation')
-
   return (
-    <div>
-      <nav className="flex gap-4 p-4 border-b">
-        <button
-          onClick={() => setCurrentPage('translation')}
-          className={`px-4 py-2 rounded ${currentPage === 'translation' ? 'bg-black text-white' : 'bg-gray-100'}`}
-        >
-          Translation Demo
-        </button>
-        <button
-          onClick={() => setCurrentPage('pdf')}
-          className={`px-4 py-2 rounded ${currentPage === 'pdf' ? 'bg-black text-white' : 'bg-gray-100'}`}
-        >
-          PDF Upload Demo
-        </button>
-      </nav>
-      {currentPage === 'translation' ? <TranslationPage /> : <PdfUploadDemo />}
-    </div>
-  )
+    <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
+      <AuthProvider>
+        <Toaster position="top-right" toastOptions={{
+          style: {
+            background: '#1e293b',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }
+        }}/>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/keys" element={<PrivateRoute><ApiKeys /></PrivateRoute>} />
+            <Route path="/languages" element={<PrivateRoute><Languages /></PrivateRoute>} />
+            <Route path="/templates" element={<PrivateRoute><Templates /></PrivateRoute>} />
+            <Route path="/translate" element={<PrivateRoute><Translate /></PrivateRoute>} />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
+  );
 }
 
-export default App
+export default App;
