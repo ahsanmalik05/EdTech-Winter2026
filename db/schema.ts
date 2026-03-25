@@ -103,3 +103,24 @@ export type TemplateSection = InferSelectModel<typeof templateSections>;
 export type NewTemplateSection = InferInsertModel<typeof templateSections>;
 export type TemplateTranslation = InferSelectModel<typeof templateTranslations>;
 export type NewTemplateTranslation = InferInsertModel<typeof templateTranslations>;
+
+export const translation_log = pgTable("translation_log", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  sourceText: varchar("source_text").notNull(),
+  translatedText: varchar("translated_text"),
+  targetLanguage: varchar("target_language", { length: 16 }).notNull(),
+  model: varchar("model", { length: 255 }).notNull(),
+  tokenCount: integer("token_count"),
+  latencyMs: integer("latency_ms").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type User = InferSelectModel<typeof users>;
+export type ApiKey = InferSelectModel<typeof api_keys>;
+export type TranslationLog = InferSelectModel<typeof translation_log>;
+export type NewTranslationLog = InferInsertModel<typeof translation_log>;
+export type NewUser = InferInsertModel<typeof users>;
+export type NewApiKey = InferInsertModel<typeof api_keys>;

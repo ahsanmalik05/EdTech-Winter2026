@@ -138,7 +138,7 @@ export async function translateBatch(
   targetLanguage: string,
   gradeLevel?: string,
   model: string = 'command-a-03-2025'
-): Promise<Record<string, { translatedText: string | null; error?: string }>> {
+): Promise<Record<string, { translatedText: string | null; tokenCount: number | null; error?: string }>> {
   const buildPrompt = (text: string) => {
     const gradeLevelInstruction = gradeLevel
       ? ` Use vocabulary and sentence structure appropriate for ${gradeLevel} students.`
@@ -156,20 +156,24 @@ export async function translateBatch(
       response.message?.content?.[0]?.type === 'text'
         ? response.message.content[0].text
         : null;
-    return { id: item.id, translatedText };
+    const tokenCount =
+      (response.usage?.tokens?.inputTokens ?? 0) +
+      (response.usage?.tokens?.outputTokens ?? 0) || null;
+    return { id: item.id, translatedText, tokenCount };
   });
 
   const settled = await Promise.allSettled(promises);
 
-  const results: Record<string, { translatedText: string | null; error?: string }> = {};
+  const results: Record<string, { translatedText: string | null; tokenCount: number | null; error?: string }> = {};
   for (let i = 0; i < settled.length; i++) {
     const result = settled[i]!;
     const item = items[i]!;
     if (result.status === 'fulfilled') {
-      results[result.value.id] = { translatedText: result.value.translatedText };
+      results[result.value.id] = { translatedText: result.value.translatedText, tokenCount: result.value.tokenCount };
     } else {
       results[item.id] = {
         translatedText: null,
+        tokenCount: null,
         error: result.reason?.message || 'Translation failed',
       };
     }

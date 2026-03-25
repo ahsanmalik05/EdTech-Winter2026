@@ -8,6 +8,13 @@
       "when": 1774320758538,
       "tag": "0000_powerful_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774389119682,
+      "tag": "0001_chief_hiroim",
+      "breakpoints": true
     }
   ]
 }
