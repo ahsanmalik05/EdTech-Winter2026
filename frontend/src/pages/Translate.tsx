@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Box, Button, Typography, Paper, TextField, CircularProgress, Autocomplete } from '@mui/material';
 import { api } from '../api/api';
 import { toast } from 'react-hot-toast';
+import { useQuery } from '../api/useQuery';
 
 export const Translate: React.FC = () => {
-  const [languages, setLanguages] = useState<{code: string; name: string}[]>([]);
+  const { data: languages = [] } = useQuery<{code: string; name: string}[]>(
+    '/api/languages',
+    { select: (raw) => Array.isArray(raw) ? raw : (raw.languages || []) },
+  );
   const [targetLang, setTargetLang] = useState<{code: string; name: string} | null>(null);
   const [textToTranslate, setTextToTranslate] = useState('');
   const [translatedText, setTranslatedText] = useState('');
@@ -12,19 +16,11 @@ export const Translate: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
-    const fetchLangs = async () => {
-      try {
-        const res = await api.get('/api/languages');
-        const langs = Array.isArray(res.data) ? res.data : (res.data.languages || []);
-        setLanguages(langs);
-        const french = langs.find((l: any) => l.code === 'fr');
-        if (french) setTargetLang(french);
-      } catch (err) {
-        toast.error('Could not load languages. Use default.');
-      }
-    };
-    fetchLangs();
-  }, []);
+    if (languages.length > 0 && !targetLang) {
+      const french = languages.find((l) => l.code === 'fr');
+      if (french) setTargetLang(french);
+    }
+  }, [languages, targetLang]);
 
   const handleTranslateText = async () => {
     if (!textToTranslate || !targetLang) return;

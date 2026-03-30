@@ -6,13 +6,16 @@ import {
   Navigate,
   Outlet,
 } from 'react-router-dom';
-import { Languages, Sparkles, KeyRound, Loader2, LogOut } from 'lucide-react';
+import { Languages, Sparkles, KeyRound, Loader2, LogOut, BarChart3, ScrollText, Globe } from 'lucide-react';
 import { cn } from './lib/utils';
 import { api } from './api/api';
 import { AuthScreen } from './pages/AuthScreen';
 import { KeySetup } from './pages/KeySetup';
 import { TranslationStudio } from './pages/TranslationStudio';
 import { TemplateGenerator } from './pages/TemplateGenerator';
+import { TranslationStats } from './pages/TranslationStats';
+import { TranslationLog } from './pages/TranslationLog';
+import { LanguageManager } from './pages/LanguageManager';
 
 interface AppUser {
   id: number;
@@ -71,6 +74,18 @@ function AppLayout({
             <NavLink to="/generate" className={navLinkClass}>
               <Sparkles className="size-3.5" />
               Generate
+            </NavLink>
+            <NavLink to="/logs" className={navLinkClass}>
+              <ScrollText className="size-3.5" />
+              Logs
+            </NavLink>
+            <NavLink to="/stats" className={navLinkClass}>
+              <BarChart3 className="size-3.5" />
+              Stats
+            </NavLink>
+            <NavLink to="/languages" className={navLinkClass}>
+              <Globe className="size-3.5" />
+              Languages
             </NavLink>
             <NavLink to="/keys" className={navLinkClass}>
               <KeyRound className="size-3.5" />
@@ -192,6 +207,18 @@ export function App() {
         <Route
           path="/generate"
           element={apiKey ? <TemplateGenerator /> : <NeedKeyPrompt />}
+        />
+        <Route
+          path="/logs"
+          element={apiKey ? <TranslationLog /> : <NeedKeyPrompt />}
+        />
+        <Route
+          path="/stats"
+          element={apiKey ? <TranslationStats /> : <NeedKeyPrompt />}
+        />
+        <Route
+          path="/languages"
+          element={apiKey ? <LanguageManager /> : <NeedKeyPrompt />}
         />
         <Route
           path="/keys"

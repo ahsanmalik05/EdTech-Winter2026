@@ -1,4 +1,3 @@
-// Translation Request/Response Types
 export interface TranslationRequest {
   text: string;
 }

@@ -1,4 +1,3 @@
-// Common Response Types
 export interface ErrorResponse {
   error: string;
 }

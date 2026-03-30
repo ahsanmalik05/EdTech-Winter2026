@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Button, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Chip } from '@mui/material';
 import { Delete, Autorenew } from '@mui/icons-material';
 import { api } from '../api/api';
 import { toast } from 'react-hot-toast';
+import { useQuery, invalidateQueries } from '../api/useQuery';
 
 interface Template {
   id: number;
@@ -15,25 +16,12 @@ interface Template {
 }
 
 export const Templates: React.FC = () => {
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const { data: templates = [], refetch } = useQuery<Template[]>('/api/templates');
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
   const [topic, setTopic] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const fetchTemplates = async () => {
-    try {
-      const res = await api.get('/api/templates');
-      setTemplates(res.data);
-    } catch (err) {
-      toast.error('Failed to load templates');
-    }
-  };
-
-  useEffect(() => {
-    fetchTemplates();
-  }, []);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -49,7 +37,8 @@ export const Templates: React.FC = () => {
       setSubject('');
       setGradeLevel('');
       setTopic('');
-      fetchTemplates();
+      invalidateQueries('/api/templates');
+      refetch();
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to generate template');
     } finally {
@@ -62,7 +51,8 @@ export const Templates: React.FC = () => {
     try {
       await api.delete(`/api/templates/${id}`);
       toast.success('Template deleted');
-      fetchTemplates();
+      invalidateQueries('/api/templates');
+      refetch();
     } catch (err) {
       toast.error('Failed to delete template');
     }

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Sparkles, ChevronDown, Clock, X, FileText, Download } from 'lucide-react';
+import { Loader2, Sparkles, ChevronDown, Clock, X, FileText, Download, Trash2 } from 'lucide-react';
 import { PDFViewer, pdf } from '@react-pdf/renderer';
 import { cn } from '../lib/utils';
 import { api } from '../api/api';
 import { TemplatePDF } from '../components/TemplatePDF';
+import { useQuery } from '../api/useQuery';
 
 interface TemplateSections {
   introduction: string;
@@ -28,11 +29,15 @@ function TemplateCard({
   expanded,
   onToggle,
   onViewPdf,
+  onDelete,
+  deleting,
 }: {
   template: TemplateResponse;
   expanded: boolean;
   onToggle: () => void;
   onViewPdf: () => void;
+  onDelete: () => void;
+  deleting: boolean;
 }) {
   return (
     <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
@@ -84,14 +89,26 @@ function TemplateCard({
             </p>
           </div>
 
-          {/* PDF action */}
-          <div className="px-5 pb-4">
+          {/* Actions */}
+          <div className="px-5 pb-4 flex items-center gap-2">
             <button
               onClick={onViewPdf}
               className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition-colors"
             >
               <FileText className="size-3.5" />
               View PDF
+            </button>
+            <button
+              onClick={onDelete}
+              disabled={deleting}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+            >
+              {deleting ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="size-3.5" />
+              )}
+              Delete
             </button>
           </div>
         </div>
@@ -128,26 +145,11 @@ export function TemplateGenerator() {
   const [topic, setTopic] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [templates, setTemplates] = useState<TemplateResponse[]>([]);
+  const { data: templates = [], loading: loadingList, mutate: mutateTemplates } = useQuery<TemplateResponse[]>('/api/templates');
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [loadingList, setLoadingList] = useState(true);
   const loadingMessage = useLoadingMessage(loading);
   const [pdfTemplate, setPdfTemplate] = useState<TemplateResponse | null>(null);
-
-  const fetchTemplates = async () => {
-    try {
-      const res = await api.get('/api/templates');
-      setTemplates(res.data);
-    } catch {
-      // silent fail on list load
-    } finally {
-      setLoadingList(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTemplates();
-  }, []);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const handleGenerate = async () => {
     if (!subject.trim() || !gradeLevel.trim() || !topic.trim()) return;
@@ -159,8 +161,9 @@ export function TemplateGenerator() {
         gradeLevel: gradeLevel.trim(),
         topic: topic.trim(),
       });
-      setTemplates((prev) => [res.data, ...prev]);
-      setExpandedId(res.data.id);
+      const created = res.data as TemplateResponse;
+      mutateTemplates((prev) => [created, ...(prev ?? [])]);
+      setExpandedId(created.id);
       setSubject('');
       setGradeLevel('');
       setTopic('');
@@ -168,6 +171,19 @@ export function TemplateGenerator() {
       setError(err.response?.data?.error || err.message || 'Generation failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await api.delete(`/api/templates/${id}`);
+      mutateTemplates((prev) => (prev ?? []).filter((t) => t.id !== id));
+      if (expandedId === id) setExpandedId(null);
+    } catch {
+      // silent
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -321,6 +337,8 @@ export function TemplateGenerator() {
                 expanded={expandedId === t.id}
                 onToggle={() => setExpandedId(expandedId === t.id ? null : t.id)}
                 onViewPdf={() => setPdfTemplate(t)}
+                onDelete={() => handleDelete(t.id)}
+                deleting={deletingId === t.id}
               />
             ))}
           </div>

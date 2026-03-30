@@ -1,4 +1,3 @@
-// Auth Request/Response Types
 export interface AuthRegisterRequest {
   email: string;
   password: string;

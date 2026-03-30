@@ -5,6 +5,7 @@ import { cn } from '../lib/utils';
 import { getFontFamily } from '../lib/pdfFonts';
 import { api } from '../api/api';
 import { TranslationPDF } from '../components/TranslationPDF';
+import { useQuery } from '../api/useQuery';
 
 interface Language {
   id: number;
@@ -24,7 +25,10 @@ interface TranslationStudioProps {
 }
 
 export function TranslationStudio({ onBusyChange }: TranslationStudioProps) {
-  const [languages, setLanguages] = useState<Language[]>([]);
+  const { data: languages = [] } = useQuery<Language[]>(
+    '/api/languages',
+    { select: (raw) => Array.isArray(raw) ? raw : raw?.languages ?? [] },
+  );
   const [targetLang, setTargetLang] = useState('');
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -44,20 +48,10 @@ export function TranslationStudio({ onBusyChange }: TranslationStudioProps) {
   }, [loading, onBusyChange]);
 
   useEffect(() => {
-    const fetchLangs = async () => {
-      try {
-        const res = await api.get('/api/languages');
-        const data = Array.isArray(res.data) ? res.data : res.data?.languages ?? [];
-        setLanguages(data);
-        if (data.length > 0 && !targetLang) {
-          setTargetLang(data[0].code);
-        }
-      } catch {
-        setLanguages([]);
-      }
-    };
-    fetchLangs();
-  }, []);
+    if (languages.length > 0 && !targetLang) {
+      setTargetLang(languages[0].code);
+    }
+  }, [languages, targetLang]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

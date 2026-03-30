@@ -25,7 +25,6 @@ const app = express();
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. curl, Postman, server-to-server)
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {

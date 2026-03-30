@@ -1,4 +1,3 @@
-// API Key Request/Response Types
 export interface CreateApiKeyRequest {
   label: string;
   scopes: ("read" | "write" | "translate")[];

@@ -2,7 +2,6 @@ import { Font } from '@react-pdf/renderer';
 
 const CDN = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl';
 
-// Variable font axis shorthands (URL-encoded)
 const WW = '%5Bwdth%2Cwght%5D'; // [wdth,wght]
 const W = '%5Bwght%5D';         // [wght]
 
@@ -43,14 +42,9 @@ Font.register({ family: 'Noto Sans Hebrew', src: `${CDN}/notosanshebrew/NotoSans
 Font.register({ family: 'Noto Sans Ethiopic', src: `${CDN}/notosansethiopic/NotoSansEthiopic${WW}.ttf` });
 Font.register({ family: 'Noto Sans Mongolian', src: `${CDN}/notosansmongolian/NotoSansMongolian-Regular.ttf` });
 
-// Disable word hyphenation for all languages (avoids crashes with non-Latin scripts)
 Font.registerHyphenationCallback((word) => [word]);
 
-// ---------------------------------------------------------------------------
-// Language-code → font-family mapping
-// ---------------------------------------------------------------------------
 const LANG_FONT: Record<string, string> = {
-  // Latin-script languages → base Noto Sans
   af: 'Noto Sans', sq: 'Noto Sans', az: 'Noto Sans', eu: 'Noto Sans',
   bs: 'Noto Sans', ca: 'Noto Sans', ceb: 'Noto Sans', co: 'Noto Sans',
   hr: 'Noto Sans', cs: 'Noto Sans', da: 'Noto Sans', nl: 'Noto Sans',
@@ -68,48 +62,35 @@ const LANG_FONT: Record<string, string> = {
   tk: 'Noto Sans', uz: 'Noto Sans', vi: 'Noto Sans', cy: 'Noto Sans',
   xh: 'Noto Sans', yo: 'Noto Sans', zu: 'Noto Sans', ny: 'Noto Sans',
 
-  // Cyrillic-script languages → base Noto Sans (covers Cyrillic)
   be: 'Noto Sans', bg: 'Noto Sans', kk: 'Noto Sans', ky: 'Noto Sans',
   mk: 'Noto Sans', mn: 'Noto Sans', ru: 'Noto Sans', sr: 'Noto Sans',
   tg: 'Noto Sans', uk: 'Noto Sans',
 
-  // Greek
   el: 'Noto Sans',
 
-  // Arabic script
   ar: 'Noto Sans Arabic', fa: 'Noto Sans Arabic', ps: 'Noto Sans Arabic',
   ku: 'Noto Sans Arabic', sd: 'Noto Sans Arabic', ur: 'Noto Sans Arabic',
 
-  // Devanagari
   hi: 'Noto Sans Devanagari', mr: 'Noto Sans Devanagari', ne: 'Noto Sans Devanagari',
 
-  // Bengali
   bn: 'Noto Sans Bengali',
 
-  // CJK
   zh: 'Noto Sans SC', 'zh-CN': 'Noto Sans SC', 'zh-TW': 'Noto Sans TC',
   ja: 'Noto Sans JP',
   ko: 'Noto Sans KR',
 
-  // South-Asian
   ta: 'Noto Sans Tamil', te: 'Noto Sans Telugu', kn: 'Noto Sans Kannada',
   ml: 'Noto Sans Malayalam', gu: 'Noto Sans Gujarati', pa: 'Noto Sans Gurmukhi',
   or: 'Noto Sans Oriya', si: 'Noto Sans Sinhala',
 
-  // Southeast-Asian
   th: 'Noto Sans Thai', lo: 'Noto Sans Lao', km: 'Noto Sans Khmer',
   my: 'Noto Sans Myanmar',
 
-  // Other scripts
   ka: 'Noto Sans Georgian', hy: 'Noto Sans Armenian',
   iw: 'Noto Sans Hebrew', he: 'Noto Sans Hebrew',
   am: 'Noto Sans Ethiopic',
 };
 
-/**
- * Returns the Noto Sans font family registered for a given language code.
- * Falls back to base 'Noto Sans' (Latin/Cyrillic/Greek) for unknown codes.
- */
 export function getFontFamily(langCode: string): string {
   return LANG_FONT[langCode] || 'Noto Sans';
 }

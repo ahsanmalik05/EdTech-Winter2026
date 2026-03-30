@@ -1,14 +1,9 @@
 import { db } from '../db/index.js';
 import { translation_glossary, type GlossaryTerm } from '../db/schema.js';
 
-// In-memory cache — loaded once on startup, refreshed explicitly
 let glossaryCache: Map<string, GlossaryTerm> = new Map();
 let matchRegex: RegExp | null = null;
 
-/**
- * Load all glossary terms from DB into memory and build the match regex.
- * Call once on server startup.
- */
 export async function loadGlossaryCache(): Promise<number> {
   const terms = await db.select().from(translation_glossary);
 
@@ -17,7 +12,6 @@ export async function loadGlossaryCache(): Promise<number> {
     glossaryCache.set(term.term.toLowerCase(), term);
   }
 
-  // Build one composite regex, sorted longest-first to prevent partial matches
   const sorted = terms
     .map((t) => t.term)
     .sort((a, b) => b.length - a.length);
@@ -34,17 +28,10 @@ export async function loadGlossaryCache(): Promise<number> {
   return terms.length;
 }
 
-/**
- * Reload cache after seeding or updating glossary terms.
- */
 export async function refreshCache(): Promise<number> {
   return loadGlossaryCache();
 }
 
-/**
- * Scan source text for glossary terms using the prebuilt regex.
- * Returns deduplicated matched GlossaryTerm objects.
- */
 export function matchTerms(text: string): GlossaryTerm[] {
   if (!matchRegex) return [];
 
@@ -63,10 +50,6 @@ export function matchTerms(text: string): GlossaryTerm[] {
   return matched;
 }
 
-/**
- * Build the glossary context block for injection into a translation system prompt.
- * Only called when there are matched terms.
- */
 export function buildGlossaryPrompt(terms: GlossaryTerm[]): string {
   if (terms.length === 0) return '';
 
