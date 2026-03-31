@@ -134,7 +134,7 @@ export function blocksToText(blocks: DocumentBlock[]): string {
         return `${' '.repeat(block.indent)}${block.marker ?? '1.'} ${block.content}`;
 
       case 'heading':
-        return `\n${block.content.toUpperCase()}\n`;
+        return `\n${block.content}\n`;
 
       case 'table_row':
         return block.cells
