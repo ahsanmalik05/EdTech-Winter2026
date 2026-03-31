@@ -185,7 +185,6 @@ export async function translateBatch(
 export async function scoreSimilarity(
   original: string,
   backTranslated: string,
-  model: string = 'command-a-03-2025'
 ): Promise<{ score: number; reasoning: string } | null> {
   const prompt = `You are evaluating translation quality. You will be given an original text and a back-translated version of it (translated to another language, then back to the original language). A perfect round-trip translation would produce text identical in meaning to the original.
 
@@ -208,14 +207,16 @@ BACK-TRANSLATED TEXT:
 ${backTranslated}`;
 
   try {
-    const response = await chatWithFallback(prompt, model);
-    if (!response) return null;
+    const response = await openai.responses.create({
+      model: 'gpt-4o-mini',
+      input: prompt,
+    });
 
-    // Strip any accidental markdown code fences the LLM might add
-    const cleaned = response.replace(/```json|```/g, '').trim();
+    const text = response.output_text;
+    if (!text) return null;
+
+    const cleaned = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned) as { score: number; reasoning: string };
-
-    // Clamp score to valid range just in case
     parsed.score = Math.min(1, Math.max(0, parsed.score));
     return parsed;
   } catch (error) {
