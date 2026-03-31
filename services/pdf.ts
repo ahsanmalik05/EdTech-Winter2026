@@ -34,7 +34,7 @@ function parseTextIntoBlocks(text: string): DocumentBlock[] {
   const blocks: DocumentBlock[] = [];
 
   for (const rawLine of lines) {
-    const indent = rawLine.match(/^(\s*)/)?.[1].length ?? 0;
+    const indent = rawLine.match(/^(\s*)/)?.[1]?.length ?? 0;
     const line = rawLine.trim();
 
     if (!line) {
@@ -53,8 +53,8 @@ function parseTextIntoBlocks(text: string): DocumentBlock[] {
     if (bulletMatch) {
       blocks.push({
         type: 'bullet_list',
-        marker: bulletMatch[1],
-        content: bulletMatch[2],
+        marker: bulletMatch[1] ?? '•',
+        content: bulletMatch[2] ?? line,
         indent
       });
       continue;
@@ -65,8 +65,8 @@ function parseTextIntoBlocks(text: string): DocumentBlock[] {
     if (numberedMatch) {
       blocks.push({
         type: 'numbered_list',
-        marker: numberedMatch[1],
-        content: numberedMatch[2],
+        marker: numberedMatch[1] ?? '1.',
+        content: numberedMatch[2] ?? line,
         indent
       });
       continue;
