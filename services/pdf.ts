@@ -119,6 +119,33 @@ function mergeAdjacentParagraphs(blocks: DocumentBlock[]): DocumentBlock[] {
   return merged;
 }
 
+export function blocksToText(blocks: DocumentBlock[]): string {
+  return blocks.map(block => {
+    switch (block.type) {
+      case 'blank':
+        return '';
+
+      case 'bullet_list':
+        return `${' '.repeat(block.indent)}${block.marker ?? '•'} ${block.content}`;
+
+      case 'numbered_list':
+        return `${' '.repeat(block.indent)}${block.marker ?? '1.'} ${block.content}`;
+
+      case 'heading':
+        return `\n${block.content.toUpperCase()}\n`;
+
+      case 'table_row':
+        return block.cells
+          ? `${' '.repeat(block.indent)}${block.cells.join(' | ')}`
+          : `${' '.repeat(block.indent)}${block.content}`;
+
+      case 'paragraph':
+      default:
+        return `${' '.repeat(block.indent)}${block.content}`;
+    }
+  }).join('\n');
+}
+
 export async function deleteFile(filePath: string): Promise<void> {
     if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
