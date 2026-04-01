@@ -62,6 +62,10 @@ export async function logTranslation(
       outputTokenCount: params.outputTokenCount ?? null,
       costUsd: costUsd?.toString() ?? null,
       latencyMs: params.latencyMs,
+      sourceTextHash: params.sourceTextHash ?? null,
+      sourceDocumentId: params.sourceDocumentId ?? null,
+      gradeLevel: params.gradeLevel ?? null,
+      cached: params.cached ?? false,
       createdAt: new Date(),
     })
     .returning({ id: translation_log.id });
@@ -315,6 +319,18 @@ async function fetchGradeLevelBySubject() {
   }));
 }
 
+async function fetchCacheHitRate(): Promise<number | null> {
+  const [totalRow] = await db.select({ total: count() }).from(translation_log);
+  const [cachedRow] = await db
+    .select({ cached: count() })
+    .from(translation_log)
+    .where(eq(translation_log.cached, true));
+  const total = totalRow?.total ?? 0;
+  const cached = cachedRow?.cached ?? 0;
+  if (total === 0) return null;
+  return Math.round((cached / total) * 10000) / 100;
+}
+
 export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
   const [
     total,
@@ -332,6 +348,7 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
     topSubjectTopicPairs,
     templatesPerUser,
     gradeLevelBySubject,
+    cacheHitRate,
   ] = await Promise.all([
     fetchTotalCount(),
     fetchTodayCount(),
@@ -348,6 +365,7 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
     fetchTopSubjectTopicPairs(),
     fetchTemplatesPerUser(),
     fetchGradeLevelBySubject(),
+    fetchCacheHitRate(),
   ]);
 
   return {
@@ -361,7 +379,7 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
     ...tokenStats,
     tokensByLanguage,
     topUsers,
-    cacheHitRate: null,
+    cacheHitRate,
     worksheetStats,
     ...costStats,
     templatesByDay,
