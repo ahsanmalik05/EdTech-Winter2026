@@ -19,8 +19,21 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   // this will be hashed
   password: varchar("password", { length: 255 }).notNull(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  emailVerifiedAt: timestamp("email_verified_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const email_verification_tokens = pgTable("email_verification_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const languages = pgTable("languages", {
@@ -140,5 +153,7 @@ export type TranslationLog = InferSelectModel<typeof translation_log>;
 export type NewTranslationLog = InferInsertModel<typeof translation_log>;
 export type TemplateGenerationLog = InferSelectModel<typeof template_generation_log>;
 export type NewTemplateGenerationLog = InferInsertModel<typeof template_generation_log>;
+export type EmailVerificationToken = InferSelectModel<typeof email_verification_tokens>;
+export type NewEmailVerificationToken = InferInsertModel<typeof email_verification_tokens>;
 export type NewUser = InferInsertModel<typeof users>;
 export type NewApiKey = InferInsertModel<typeof api_keys>;

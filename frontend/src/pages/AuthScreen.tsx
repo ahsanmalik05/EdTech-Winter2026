@@ -13,14 +13,24 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) return;
     setLoading(true);
     setError('');
+    setNotice('');
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
       const res = await api.post(endpoint, { email: email.trim(), password });
+      if (mode === 'register') {
+        setNotice(
+          res.data?.message ||
+            'Registration successful. Please verify your email before signing in.'
+        );
+        setMode('login');
+        return;
+      }
       onAuth(res.data.token, res.data.user);
     } catch (err: any) {
       setError(
@@ -78,6 +88,12 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
         {error && (
           <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
             <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
+
+        {notice && (
+          <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2.5">
+            <p className="text-emerald-700 text-sm">{notice}</p>
           </div>
         )}
 
