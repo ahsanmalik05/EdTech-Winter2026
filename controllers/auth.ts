@@ -4,17 +4,34 @@ import { users } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import type {
+  AuthRegisterRequest,
+  AuthLoginRequest,
+  AuthResponse,
+  MeResponse,
+} from "../types/auth.js";
 import config from "../config/config.js";
 import { createEmailVerificationToken, consumeEmailVerificationToken } from "../services/email_verification.js";
 import { sendVerificationEmail } from "../services/mailer.js";
-import type { AuthRegisterRequest, AuthLoginRequest, AuthResponse, MeResponse } from "../types/auth.js";
 import type { ErrorResponse } from "../types/response.js";
+
+const IS_PROD = config.nodeEnv === "production";
+
+const COOKIE_OPTIONS: import("express").CookieOptions = {
+  httpOnly: true,
+  secure: IS_PROD,
+  sameSite: "lax",
+  maxAge: 60 * 60 * 1000,
+  path: "/",
+};
 
 export const register = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body as AuthRegisterRequest;
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" } as ErrorResponse);
+      return res
+        .status(400)
+        .json({ error: "Email and password are required" } as ErrorResponse);
     }
 
     const userExists = await db
@@ -23,7 +40,9 @@ export const register = async (req: Request, res: Response) => {
       .where(eq(users.email, email));
 
     if (userExists.length > 0) {
-      return res.status(400).json({ error: "User already exists" } as ErrorResponse);
+      return res
+        .status(400)
+        .json({ error: "User already exists" } as ErrorResponse);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -33,21 +52,27 @@ export const register = async (req: Request, res: Response) => {
       .returning({ id: users.id, email: users.email, emailVerified: users.emailVerified });
 
     if (!user[0]) {
-      return res.status(500).json({ error: "Failed to register user" } as ErrorResponse);
+      return res
+        .status(500)
+        .json({ error: "Failed to register user" } as ErrorResponse);
     }
+
+    const token = jwt.sign({ id: user[0].id }, config.jwtSecret, {
+      expiresIn: "1h",
+    });
 
     const rawToken = await createEmailVerificationToken(user[0].id);
     const verifyUrl = `${config.appBaseUrl}/api/auth/verify-email?token=${encodeURIComponent(rawToken)}`;
     await sendVerificationEmail(user[0].email, verifyUrl);
 
-    return res.status(201).json({
-      message: "Registration successful. Please verify your email before logging in.",
-      verificationRequired: true,
-      user: user[0],
-    });
+    const response: AuthResponse = { user: user[0], message: "Registration successful. Please verify your email before logging in.",
+      verificationRequired: true };
+    return res.status(201).json(response);
   } catch (error) {
     console.error("Error registering user:", error);
-    return res.status(500).json({ error: "Failed to register user" } as ErrorResponse);
+    return res
+      .status(500)
+      .json({ error: "Failed to register user" } as ErrorResponse);
   }
 };
 
@@ -55,18 +80,24 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body as AuthLoginRequest;
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" } as ErrorResponse);
+      return res
+        .status(400)
+        .json({ error: "Email and password are required" } as ErrorResponse);
     }
 
     const user = await db.select().from(users).where(eq(users.email, email));
 
     if (user.length === 0) {
-      return res.status(401).json({ error: "Invalid credentials" } as ErrorResponse);
+      return res
+        .status(401)
+        .json({ error: "Invalid credentials" } as ErrorResponse);
     }
 
     const isValidPassword = await bcrypt.compare(password, user[0]!.password);
     if (!isValidPassword) {
-      return res.status(401).json({ error: "Invalid credentials" } as ErrorResponse);
+      return res
+        .status(401)
+        .json({ error: "Invalid credentials" } as ErrorResponse);
     }
 
     if (!user[0]!.emailVerified) {
@@ -80,27 +111,39 @@ export const login = async (req: Request, res: Response) => {
       expiresIn: "1h",
     });
 
+    res.cookie("token", token, COOKIE_OPTIONS);
     const response: AuthResponse = {
       user: { id: user[0]!.id, email: user[0]!.email },
-      token
     };
     return res.status(200).json(response);
   } catch (error) {
     console.error("Error logging in user:", error);
-    return res.status(500).json({ error: "Failed to login user" } as ErrorResponse);
+    return res
+      .status(500)
+      .json({ error: "Failed to login user" } as ErrorResponse);
   }
+};
+
+export const logout = async (_req: Request, res: Response) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: IS_PROD,
+    sameSite: "lax",
+    path: "/",
+  });
+  return res.status(200).json({ message: "Logged out" });
 };
 
 export const me = async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
+    const token = req.cookies?.token;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({ error: "Unauthorized" } as ErrorResponse);
     }
-
-    const token = authHeader.substring(7);
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET!) as {
+    const decodedToken = jwt.verify(token, config.jwtSecret, {
+      algorithms: ["HS256"],
+    }) as {
       id: number;
     };
     const userId = decodedToken.id;
@@ -118,7 +161,9 @@ export const me = async (req: Request, res: Response) => {
     return res.status(200).json(response);
   } catch (error) {
     console.error("Error fetching user:", error);
-    return res.status(500).json({ error: "Failed to fetch user" } as ErrorResponse);
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch user" } as ErrorResponse);
   }
 };
 

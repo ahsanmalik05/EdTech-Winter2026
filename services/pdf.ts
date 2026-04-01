@@ -2,6 +2,8 @@ import fs from "fs";
 import fsp from "fs/promises";
 import { PDFParse } from 'pdf-parse';
 
+export type TranslatedBlock = { tokenCount?: number | null | undefined; notes?: string | undefined } & DocumentBlock ;
+
 export interface DocumentBlock {
   type: 'heading' | 'paragraph' | 'bullet_list' | 'numbered_list' | 'table_row' | 'blank';
   content: string;

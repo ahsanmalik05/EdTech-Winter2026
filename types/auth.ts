@@ -17,7 +17,8 @@ export interface AuthUser {
 
 export interface AuthResponse {
   user: AuthUser;
-  token: string;
+  message?: string;
+  verificationRequired?: boolean;
 }
 
 export interface MeResponse {

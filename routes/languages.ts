@@ -1,14 +1,20 @@
 import express from "express";
-import { availableLanguages, getLanguage, addLanguage, deleteLanguage } from "../controllers/languages.js";
+import {
+  availableLanguages,
+  getLanguage,
+  addLanguage,
+  deleteLanguage,
+} from "../controllers/languages.js";
+import { authMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.get("/", availableLanguages);
+router.get("/", authMiddleware, availableLanguages);
 
-router.post("/", addLanguage);
+router.post("/", authMiddleware, addLanguage);
 
-router.get("/search", getLanguage);
+router.get("/search", authMiddleware, getLanguage);
 
-router.delete("/:id", deleteLanguage);
+router.delete("/:id", authMiddleware, deleteLanguage);
 
 export default router;

@@ -1,8 +1,22 @@
 import { generateObject, generateText, Output } from "ai";
 import { openai } from "@ai-sdk/openai";
 import type { TemplateSections } from "../types/templates.js";
-import { normalizedInputSchema, templateSchema, validationSchema, type TemplateOutput } from "./prompts/schemas.js";
-import { GENERATION_SYSTEM, VALIDATION_SYSTEM, baseContext } from "./prompts/system.js";
+
+import { logTemplateValidation } from "./template_validation_log.js";
+
+import {
+  normalizedInputSchema,
+  similarityScoreSchema,
+  templateSchema,
+  validationSchema,
+  type SimilarityScoreOutput,
+  type TemplateOutput,
+} from "./prompts/schemas.js";
+import {
+  GENERATION_SYSTEM,
+  VALIDATION_SYSTEM,
+  baseContext,
+} from "./prompts/system.js";
 
 export async function normalizeInputs(
   subject: string,
@@ -24,7 +38,10 @@ Grade Level: ${gradeLevel}`,
     });
     return { subject: object.subject, gradeLevel: object.gradeLevel };
   } catch (err) {
-    console.error("Input normalization failed, using title-case fallback:", err);
+    console.error(
+      "Input normalization failed, using title-case fallback:",
+      err,
+    );
     return {
       subject: subject.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
       gradeLevel: gradeLevel.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
@@ -32,7 +49,12 @@ Grade Level: ${gradeLevel}`,
   }
 }
 
-const KNOWLEDGE_TYPES = ["facts", "strategies", "procedures", "rationales"] as const;
+const KNOWLEDGE_TYPES = [
+  "facts",
+  "strategies",
+  "procedures",
+  "rationales",
+] as const;
 
 function flattenAssessment(
   topic: string,
@@ -43,7 +65,9 @@ function flattenAssessment(
   return [opening, ...parts].join("\n\n");
 }
 
-function validateInBackground(
+export function validateInBackground(
+  templateId: number,
+  generationLogId: number | null,
   subject: string,
   topic: string,
   gradeLevel: string,
@@ -57,13 +81,36 @@ function validateInBackground(
     }),
     system: VALIDATION_SYSTEM,
     prompt: `Subject: ${subject}\nTopic: ${topic}\nGrade Level: ${gradeLevel}\n\nINTRODUCTION:\n${sections.introduction}\n\nMODEL SELF-ASSESSMENT:\n${sections.model_assessment}\n\nSELF-REVIEW:\n${sections.self_review}`,
-  }).then(({ output: validation }) => {
-    if (validation && !validation.valid) {
-      console.warn(`Template validation issues [${subject}/${topic}]:`, validation.issues);
-    }
-  }).catch((err) => {
-    console.error('Background validation failed:', err);
-  });
+  })
+    .then(({ output: validation }) => {
+      if (validation) {
+        void logTemplateValidation({
+          templateId,
+          generationLogId,
+          isValid: validation.valid,
+          issues: validation.issues,
+          model: modelId,
+        });
+        if (!validation.valid) {
+          console.warn(
+            `Template validation issues [${subject}/${topic}]:`,
+            validation.issues,
+          );
+        }
+      }
+    })
+    .catch((err) => {
+      console.error("Background validation failed:", err);
+    });
+}
+
+export interface GenerationResult {
+  sections: TemplateSections;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  } | null;
 }
 
 export async function orchestrateGeneration(
@@ -71,8 +118,8 @@ export async function orchestrateGeneration(
   topic: string,
   gradeLevel: string,
   modelId: string = "gpt-5-nano",
-): Promise<TemplateSections> {
-  const { output } = await generateText({
+): Promise<GenerationResult> {
+  const { output, usage } = await generateText({
     model: openai(modelId),
     output: Output.object({
       schema: templateSchema,
@@ -80,7 +127,7 @@ export async function orchestrateGeneration(
     system: GENERATION_SYSTEM,
     prompt: `${baseContext(subject, topic, gradeLevel)}\n\nGenerate the complete self-assessment script now.`,
     providerOptions: {
-      openai: { reasoningEffort: 'low' },
+      openai: { reasoningEffort: "low" },
     },
   });
 
@@ -92,7 +139,55 @@ export async function orchestrateGeneration(
     self_review: output.self_review,
   };
 
-  validateInBackground(subject, topic, gradeLevel, sections, modelId);
+  const usageResult =
+    usage && usage.inputTokens !== undefined && usage.outputTokens !== undefined
+      ? {
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+        }
+      : null;
 
-  return sections;
+  return { sections, usage: usageResult };
+}
+
+export async function scoreSimilarity(
+  original: string,
+  backTranslated: string,
+  modelId: string = "gpt-5-nano",
+): Promise<{ score: number; reasoning: string } | null> {
+  const systemPrompt = `You are evaluating translation quality. You will be given an original text and a back-translated version of it (translated to another language, then back to the original language). A perfect round-trip translation would produce text identical in meaning to the original.
+
+Compare the two texts and respond with a JSON object containing:
+- "score": a number between 0.0 and 1.0
+- "reasoning": one sentence explaining the score
+
+Scoring guide:
+- 0.9 to 1.0: meaning is fully preserved, only trivial wording differences
+- 0.7 to 0.9: meaning mostly preserved, minor nuances lost
+- 0.5 to 0.7: meaning partially preserved, some key ideas altered
+- below 0.5: significant meaning lost or distorted`;
+
+  const prompt = `ORIGINAL TEXT:\n${original}\n\nBACK-TRANSLATED TEXT:\n${backTranslated}`;
+
+  try {
+    const { output } = await generateText({
+      model: openai(modelId),
+      output: Output.object({
+        schema: similarityScoreSchema,
+      }),
+      system: systemPrompt,
+      prompt,
+    });
+
+    if (!output) return null;
+
+    return {
+      score: output.score,
+      reasoning: output.reasoning,
+    };
+  } catch (error) {
+    console.error("Failed to score similarity:", error);
+    return null;
+  }
 }

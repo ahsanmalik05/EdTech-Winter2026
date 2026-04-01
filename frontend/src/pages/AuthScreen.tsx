@@ -4,7 +4,7 @@ import { cn } from '../lib/utils';
 import { api } from '../api/api';
 
 interface AuthScreenProps {
-  onAuth: (token: string, user: { id: number; email: string }) => void;
+  onAuth: (user: { id: number; email: string }) => void;
 }
 
 export function AuthScreen({ onAuth }: AuthScreenProps) {
@@ -26,6 +26,7 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
       const res = await api.post(endpoint, { email: email.trim(), password });
+
       if (mode === 'register') {
         setNotice(
           res.data?.message ||
@@ -34,7 +35,7 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
         setMode('login');
         return;
       }
-      onAuth(res.data.token, res.data.user);
+      onAuth(res.data.user);
     } catch (err: any) {
       const verificationRequired = !!err.response?.data?.verificationRequired;
       setError(

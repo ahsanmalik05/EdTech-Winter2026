@@ -2,10 +2,14 @@ import type { Request, Response } from "express";
 import { randomBytes, createHash } from "crypto";
 import { db } from "../db/index.js";
 import { api_keys, users } from "../db/schema.js";
-import { eq } from "drizzle-orm";
-import jwt from "jsonwebtoken";
+import { eq, and } from "drizzle-orm";
 import bcrypt from "bcrypt";
-import type { CreateApiKeyRequest, UpdateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse } from "../types/apiKey.js";
+import type {
+  CreateApiKeyRequest,
+  UpdateApiKeyRequest,
+  CreateApiKeyResponse,
+  DeleteApiKeyResponse,
+} from "../types/apiKey.js";
 import type { ErrorResponse } from "../types/response.js";
 
 export const createApiKey = async (req: Request, res: Response) => {
@@ -13,35 +17,30 @@ export const createApiKey = async (req: Request, res: Response) => {
     const { label, scopes } = req.body as CreateApiKeyRequest;
 
     if (!label || !scopes) {
-      return res.status(400).json({ error: "Missing required fields" } as ErrorResponse);
+      return res
+        .status(400)
+        .json({ error: "Missing required fields" } as ErrorResponse);
     }
 
-    // Validate scopes — only allow known values defined in the database enum
     const VALID_SCOPES = ["read", "translate", "write"] as const;
 
     if (!Array.isArray(scopes) || scopes.length === 0) {
-      return res.status(400).json({ error: "scopes must be a non-empty array" } as ErrorResponse);
+      return res
+        .status(400)
+        .json({ error: "scopes must be a non-empty array" } as ErrorResponse);
     }
 
-    const invalidScopes = scopes.filter(s => !VALID_SCOPES.includes(s));
+    const invalidScopes = scopes.filter((s) => !VALID_SCOPES.includes(s));
     if (invalidScopes.length > 0) {
       return res.status(400).json({
         error: `Invalid scopes: ${invalidScopes.join(", ")}. Valid values are: ${VALID_SCOPES.join(", ")}`,
       } as ErrorResponse);
     }
 
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const userId = req.user?.id;
+    if (!userId) {
       return res.status(401).json({ error: "Unauthorized" } as ErrorResponse);
     }
-    console.log(authHeader);
-    const token = authHeader.substring(7);
-    console.log(token);
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET!) as {
-      id: number;
-    };
-    const userId = decodedToken.id;
 
     const userExists = await db
       .select()
@@ -49,11 +48,13 @@ export const createApiKey = async (req: Request, res: Response) => {
       .where(eq(users.id, userId));
 
     if (userExists.length === 0) {
-      return res.status(401).json({ error: "Invalid credentials" } as ErrorResponse);
+      return res
+        .status(401)
+        .json({ error: "Invalid credentials" } as ErrorResponse);
     }
 
     const raw = randomBytes(32).toString("hex");
-    const public_key = randomBytes(8).toString("hex")
+    const public_key = randomBytes(8).toString("hex");
     const key = `mety_live_${public_key}_${raw}`;
     const hash = createHash("sha256").update(key).digest("hex");
 
@@ -78,7 +79,9 @@ export const createApiKey = async (req: Request, res: Response) => {
       });
 
     if (!api_key[0]) {
-      return res.status(500).json({ error: "Failed to create API key" } as ErrorResponse);
+      return res
+        .status(500)
+        .json({ error: "Failed to create API key" } as ErrorResponse);
     }
 
     const response: CreateApiKeyResponse = {
@@ -87,23 +90,18 @@ export const createApiKey = async (req: Request, res: Response) => {
     return res.status(201).json(response);
   } catch (error) {
     console.error("Error creating API key:", error);
-    return res.status(500).json({ error: "Failed to create API key" } as ErrorResponse);
+    return res
+      .status(500)
+      .json({ error: "Failed to create API key" } as ErrorResponse);
   }
 };
 
 export const getApiKeys = async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const userId = req.user?.id;
+    if (!userId) {
       return res.status(401).json({ error: "Unauthorized" } as ErrorResponse);
     }
-
-    const token = authHeader.substring(7);
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET!) as {
-      id: number;
-    };
-    const userId = decodedToken.id;
 
     const allKeys = await db
       .select()
@@ -113,32 +111,36 @@ export const getApiKeys = async (req: Request, res: Response) => {
     return res.status(200).json({ allKeys });
   } catch (error) {
     console.error("Error fetching API keys:", error);
-    return res.status(500).json({ error: "Failed to fetch API keys" } as ErrorResponse);
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch API keys" } as ErrorResponse);
   }
 };
 
 export const getApiKeyData = async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" } as ErrorResponse);
+    }
+
     const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
-      return res.status(400).json({ error: "Missing required fields" } as ErrorResponse);
+      return res
+        .status(400)
+        .json({ error: "Missing required fields" } as ErrorResponse);
     }
-
-    const key = req.headers["x-api-key"] as string;
-    if (!key) {
-      return res.status(400).json({ error: "Missing API key header" } as ErrorResponse);
-    }
-
-    const hash = createHash("sha256").update(key).digest("hex");
 
     const [apiKey] = await db
       .select()
       .from(api_keys)
-      .where(eq(api_keys.id, id))
+      .where(and(eq(api_keys.id, id), eq(api_keys.users_id, userId)))
       .limit(1);
 
-    if (!apiKey || apiKey.key !== hash) {
-      return res.status(404).json({ error: "API key not found" } as ErrorResponse);
+    if (!apiKey) {
+      return res
+        .status(404)
+        .json({ error: "API key not found" } as ErrorResponse);
     }
 
     const { id: _, key: __, ...rest } = apiKey;
@@ -146,12 +148,19 @@ export const getApiKeyData = async (req: Request, res: Response) => {
     return res.status(200).json({ apiKey: rest });
   } catch (error) {
     console.error("Error fetching API key:", error);
-    return res.status(500).json({ error: "Failed to fetch API key" } as ErrorResponse);
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch API key" } as ErrorResponse);
   }
 };
 
 export const updateApiKey = async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" } as ErrorResponse);
+    }
+
     const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
       return res.status(400).json({ error: "Invalid ID" } as ErrorResponse);
@@ -159,7 +168,9 @@ export const updateApiKey = async (req: Request, res: Response) => {
 
     const { label, scopes } = req.body as UpdateApiKeyRequest;
     if (!label && !scopes) {
-      return res.status(400).json({ error: "Nothing to update" } as ErrorResponse);
+      return res
+        .status(400)
+        .json({ error: "Nothing to update" } as ErrorResponse);
     }
 
     // Validate scopes if provided
@@ -167,10 +178,12 @@ export const updateApiKey = async (req: Request, res: Response) => {
 
     if (scopes !== undefined) {
       if (!Array.isArray(scopes) || scopes.length === 0) {
-        return res.status(400).json({ error: "scopes must be a non-empty array" } as ErrorResponse);
+        return res
+          .status(400)
+          .json({ error: "scopes must be a non-empty array" } as ErrorResponse);
       }
 
-      const invalidScopes = scopes.filter(s => !VALID_SCOPES.includes(s));
+      const invalidScopes = scopes.filter((s) => !VALID_SCOPES.includes(s));
 
       if (invalidScopes.length > 0) {
         return res.status(400).json({
@@ -182,11 +195,13 @@ export const updateApiKey = async (req: Request, res: Response) => {
     const [updated] = await db
       .update(api_keys)
       .set({ ...(label && { label }), ...(scopes && { scopes }) })
-      .where(eq(api_keys.id, id))
+      .where(and(eq(api_keys.id, id), eq(api_keys.users_id, userId)))
       .returning();
 
     if (!updated) {
-      return res.status(404).json({ error: "API key not found" } as ErrorResponse);
+      return res
+        .status(404)
+        .json({ error: "API key not found" } as ErrorResponse);
     }
 
     const { id: _, key: __, ...rest } = updated;
@@ -194,12 +209,19 @@ export const updateApiKey = async (req: Request, res: Response) => {
     return res.status(200).json({ apiKey: rest });
   } catch (error) {
     console.error("Error updating API key:", error);
-    return res.status(500).json({ error: "Failed to update API key" } as ErrorResponse);
+    return res
+      .status(500)
+      .json({ error: "Failed to update API key" } as ErrorResponse);
   }
 };
 
 export const deleteApiKey = async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" } as ErrorResponse);
+    }
+
     const id = parseInt(req.params.id as string, 10);
     if (isNaN(id)) {
       return res.status(400).json({ error: "Invalid ID" } as ErrorResponse);
@@ -207,17 +229,23 @@ export const deleteApiKey = async (req: Request, res: Response) => {
 
     const [deleted] = await db
       .delete(api_keys)
-      .where(eq(api_keys.id, id))
+      .where(and(eq(api_keys.id, id), eq(api_keys.users_id, userId)))
       .returning();
 
     if (!deleted) {
-      return res.status(404).json({ error: "API key not found" } as ErrorResponse);
+      return res
+        .status(404)
+        .json({ error: "API key not found" } as ErrorResponse);
     }
 
-    const response: DeleteApiKeyResponse = { message: "API key deleted successfully" };
+    const response: DeleteApiKeyResponse = {
+      message: "API key deleted successfully",
+    };
     return res.status(200).json(response);
   } catch (error) {
     console.error("Error deleting API key:", error);
-    return res.status(500).json({ error: "Failed to delete API key" } as ErrorResponse);
+    return res
+      .status(500)
+      .json({ error: "Failed to delete API key" } as ErrorResponse);
   }
 };

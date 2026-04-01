@@ -139,7 +139,7 @@ function useLoadingMessage(loading: boolean) {
   return LOADING_MESSAGES[index];
 }
 
-export function TemplateGenerator() {
+export function TemplateGenerator({ onBusyChange }: { onBusyChange?: (busy: boolean) => void }) {
   const [subject, setSubject] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
   const [topic, setTopic] = useState('');
@@ -147,9 +147,12 @@ export function TemplateGenerator() {
   const [error, setError] = useState('');
   const { data: templates = [], loading: loadingList, mutate: mutateTemplates } = useQuery<TemplateResponse[]>('/api/templates');
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const loadingMessage = useLoadingMessage(loading);
+  useEffect(() => {
+    onBusyChange?.(loading);
+  }, [loading, onBusyChange]);
   const [pdfTemplate, setPdfTemplate] = useState<TemplateResponse | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const loadingMessage = useLoadingMessage(loading);
 
   const handleGenerate = async () => {
     if (!subject.trim() || !gradeLevel.trim() || !topic.trim()) return;

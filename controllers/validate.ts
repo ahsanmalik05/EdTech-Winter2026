@@ -1,7 +1,10 @@
 // controllers/validate.ts
 import type { Request, Response } from 'express';
+import config from '../config/config.js';
 import { extractTextFromPdf, deleteFile } from '../services/pdf.js';
 import { validateTranslation } from '../services/validate.js';
+import { logTranslation } from '../services/translation_log.js';
+import { logTranslationValidation } from '../services/translation_validation_log.js';
 
 export const validateTranslationHandler = async (
   req: Request,
@@ -38,6 +41,40 @@ export const validateTranslationHandler = async (
     }
 
     const result = await validateTranslation(originalText, translatedText, targetLanguage);
+
+    const start = Date.now();
+    const userId = req.apiKey?.user_id;
+    if (userId) {
+      logTranslation({
+        userId,
+        sourceText: originalText,
+        translatedText: translatedText,
+        sourceLanguage: undefined,
+        targetLanguage,
+        model: config.models.validation,
+        tokenCount: undefined,
+        inputTokenCount: undefined,
+        outputTokenCount: undefined,
+        costUsd: undefined,
+        latencyMs: Date.now() - start,
+      }).then((translationLogId) => {
+        if (translationLogId) {
+          void logTranslationValidation({
+            translationLogId,
+            backTranslatedText: result.backTranslated,
+            similarityScore: result.similarityScore?.toString() ?? null,
+            similarityReasoning: result.similarityReasoning,
+            sectionCountMatch: result.structuralChecks.sectionCountMatch,
+            originalSectionCount: result.structuralChecks.originalSectionCount,
+            translatedSectionCount: result.structuralChecks.translatedSectionCount,
+            headersIntact: result.structuralChecks.headersIntact,
+            overallConfidence: result.overallConfidence.toString(),
+            issues: [],
+          });
+        }
+      }).catch((err) => console.error('Failed to log translation validation:', err));
+    }
+
     return res.status(200).json(result);
   } catch (error) {
     console.error('Validation error:', error);

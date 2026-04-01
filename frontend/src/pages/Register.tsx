@@ -15,7 +15,7 @@ export const Register: React.FC = () => {
     e.preventDefault();
     try {
       const res = await api.post('/api/auth/register', { email, password });
-      login(res.data.token, res.data.user);
+      login(res.data.user);
       toast.success('Account created successfully!');
       navigate('/');
     } catch (err: any) {

@@ -8,7 +8,7 @@ interface CacheEntry<T> {
 
 const cache = new Map<string, CacheEntry<unknown>>();
 
-const DEFAULT_STALE_MS = 30000; // 30 seconds
+const DEFAULT_STALE_MS = 30000;
 
 interface UseQueryOptions<T> {
   select?: (raw: any) => T;

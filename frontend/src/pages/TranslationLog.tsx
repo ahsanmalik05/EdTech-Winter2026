@@ -1,39 +1,74 @@
-import { useState, useMemo } from 'react';
-import { Loader2, Search, Trash2, X, FileText, Clock } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { api } from '../api/api';
-import { useQuery, invalidateQuery } from '../api/useQuery';
+import { useState, useMemo } from "react";
+import {
+  Loader2,
+  Search,
+  Trash2,
+  X,
+  FileText,
+  Clock,
+  Zap,
+  DollarSign,
+  ArrowRightLeft,
+  ChevronDown,
+} from "lucide-react";
+import { cn } from "../lib/utils";
+import { api } from "../api/api";
+import { useQuery, invalidateQuery } from "../api/useQuery";
 
 interface LogEntry {
   id: number;
   userId: number;
   sourceText: string;
   translatedText: string | null;
+  sourceLanguage: string | null;
   targetLanguage: string;
   model: string;
   tokenCount: number | null;
+  inputTokenCount: number | null;
+  outputTokenCount: number | null;
+  costUsd: string | null;
   latencyMs: number;
   createdAt: string;
 }
 
+function fmtLatency(ms: number) {
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+function fmtCost(raw: string | null): string | null {
+  if (!raw) return null;
+  const n = parseFloat(raw);
+  if (!isFinite(n) || n === 0) return null;
+  if (n < 0.0001) return `$${n.toFixed(6)}`;
+  if (n < 0.01) return `$${n.toFixed(4)}`;
+  return `$${n.toFixed(3)}`;
+}
+
+function fmtTokens(n: number | null) {
+  if (n === null) return null;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
+
 export function TranslationLog() {
-  const [langFilter, setLangFilter] = useState('');
-  const [activeFilter, setActiveFilter] = useState('');
+  const [langFilter, setLangFilter] = useState("");
+  const [activeFilter, setActiveFilter] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
 
   const queryUrl = activeFilter
     ? `/api/translation-log/filter?target_language=${encodeURIComponent(activeFilter)}`
-    : '/api/translation-log';
+    : "/api/translation-log";
 
-  const { data: entries = [], loading, error, refetch } = useQuery<LogEntry[]>(
-    queryUrl,
-    { select: (raw) => raw.log || [] },
-  );
+  const {
+    data: entries = [],
+    loading,
+    error,
+    refetch,
+  } = useQuery<LogEntry[]>(queryUrl, { select: (raw) => raw.log || [] });
 
-  const handleFilter = () => {
-    setActiveFilter(langFilter.trim());
-  };
+  const handleFilter = () => setActiveFilter(langFilter.trim());
 
   const handleDelete = async (id: number) => {
     setDeleting(id);
@@ -50,9 +85,11 @@ export function TranslationLog() {
   };
 
   const sorted = useMemo(
-    () => [...entries].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ),
+    () =>
+      [...entries].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      ),
     [entries],
   );
 
@@ -98,8 +135,8 @@ export function TranslationLog() {
         {langFilter && (
           <button
             onClick={() => {
-              setLangFilter('');
-              setActiveFilter('');
+              setLangFilter("");
+              setActiveFilter("");
             }}
             className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
           >
@@ -108,14 +145,17 @@ export function TranslationLog() {
         )}
         <div className="flex-1" />
         <span className="text-xs text-zinc-400 tabular-nums">
-          {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+          {entries.length} {entries.length === 1 ? "entry" : "entries"}
         </span>
       </div>
 
       {error && (
         <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 flex items-center justify-between">
           <p className="text-red-600 text-sm">{error}</p>
-          <button onClick={() => refetch()} className="text-red-300 hover:text-red-500 transition-colors">
+          <button
+            onClick={() => refetch()}
+            className="text-red-300 hover:text-red-500 transition-colors"
+          >
             <X className="size-4" />
           </button>
         </div>
@@ -138,75 +178,171 @@ export function TranslationLog() {
           {sorted.map((entry) => {
             const isExpanded = expandedId === entry.id;
             const isSuccess = !!entry.translatedText;
+            const cost = fmtCost(entry.costUsd);
+            const totalTokens = fmtTokens(entry.tokenCount);
+
             return (
               <div
                 key={entry.id}
                 className="border border-zinc-200 rounded-lg overflow-hidden bg-white"
               >
+                {/* Row */}
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : entry.id)}
                   className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-zinc-50 transition-colors"
                 >
                   <span
                     className={cn(
-                      'size-2 rounded-full shrink-0',
-                      isSuccess ? 'bg-emerald-400' : 'bg-red-400'
+                      "size-2 rounded-full shrink-0",
+                      isSuccess ? "bg-emerald-400" : "bg-red-400",
                     )}
                   />
+
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-zinc-800 truncate">
                       {entry.sourceText.slice(0, 120)}
-                      {entry.sourceText.length > 120 && '…'}
+                      {entry.sourceText.length > 120 && "…"}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-zinc-400">{entry.targetLanguage}</span>
+
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                      {/* Language route */}
+                      <span className="text-xs text-zinc-400 flex items-center gap-1">
+                        {entry.sourceLanguage && (
+                          <>
+                            <span>{entry.sourceLanguage}</span>
+                            <ArrowRightLeft className="size-2.5 text-zinc-300" />
+                          </>
+                        )}
+                        <span>{entry.targetLanguage}</span>
+                      </span>
+
                       <span className="text-zinc-200">·</span>
-                      <span className="text-xs text-zinc-400 font-mono">{entry.model}</span>
+                      <span className="text-xs text-zinc-400 font-mono">
+                        {entry.model}
+                      </span>
+
                       <span className="text-zinc-200">·</span>
                       <span className="text-xs text-zinc-400 tabular-nums flex items-center gap-1">
                         <Clock className="size-3" />
-                        {entry.latencyMs < 1000
-                          ? `${entry.latencyMs}ms`
-                          : `${(entry.latencyMs / 1000).toFixed(1)}s`}
+                        {fmtLatency(entry.latencyMs)}
                       </span>
-                      {entry.tokenCount !== null && (
+
+                      {totalTokens && (
                         <>
                           <span className="text-zinc-200">·</span>
-                          <span className="text-xs text-zinc-400 tabular-nums">
-                            {entry.tokenCount.toLocaleString()} tokens
+                          <span className="text-xs text-zinc-400 tabular-nums flex items-center gap-1">
+                            <Zap className="size-3" />
+                            {totalTokens}
+                          </span>
+                        </>
+                      )}
+
+                      {cost && (
+                        <>
+                          <span className="text-zinc-200">·</span>
+                          <span className="text-xs text-emerald-600 tabular-nums font-medium flex items-center gap-0.5">
+                            <DollarSign className="size-3" />
+                            {cost.replace("$", "")}
                           </span>
                         </>
                       )}
                     </div>
                   </div>
-                  <span className="text-xs text-zinc-300 shrink-0">
-                    {new Date(entry.createdAt).toLocaleDateString()}
-                  </span>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-zinc-300">
+                      {new Date(entry.createdAt).toLocaleDateString()}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "size-3.5 text-zinc-300 transition-transform",
+                        isExpanded && "rotate-180",
+                      )}
+                    />
+                  </div>
                 </button>
 
+                {/* Expanded */}
                 {isExpanded && (
-                  <div className="border-t border-zinc-100 px-4 py-3 space-y-3">
-                    <div>
-                      <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block mb-1">
-                        Source
-                      </span>
-                      <p className="text-sm text-zinc-700 whitespace-pre-wrap text-pretty leading-relaxed">
-                        {entry.sourceText}
-                      </p>
-                    </div>
-                    {entry.translatedText && (
+                  <div className="border-t border-zinc-100 px-4 py-4 space-y-4">
+                    {/* Text content */}
+                    <div className="grid grid-cols-1 gap-4">
                       <div>
-                        <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block mb-1">
-                          {entry.targetLanguage}
+                        <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block mb-1.5">
+                          Source
+                          {entry.sourceLanguage
+                            ? ` · ${entry.sourceLanguage}`
+                            : ""}
                         </span>
-                        <p className="text-sm text-zinc-700 whitespace-pre-wrap text-pretty leading-relaxed">
-                          {entry.translatedText}
+                        <p className="text-sm text-zinc-700 whitespace-pre-wrap text-pretty leading-relaxed bg-zinc-50 rounded-md px-3 py-2.5">
+                          {entry.sourceText}
                         </p>
                       </div>
+                      {entry.translatedText && (
+                        <div>
+                          <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block mb-1.5">
+                            Translation · {entry.targetLanguage}
+                          </span>
+                          <p className="text-sm text-zinc-700 whitespace-pre-wrap text-pretty leading-relaxed bg-zinc-50 rounded-md px-3 py-2.5">
+                            {entry.translatedText}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Token + cost breakdown */}
+                    {(entry.inputTokenCount !== null ||
+                      entry.outputTokenCount !== null ||
+                      cost) && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {entry.inputTokenCount !== null && (
+                          <div className="bg-zinc-50 rounded-md px-3 py-2">
+                            <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium mb-0.5">
+                              Input tokens
+                            </p>
+                            <p className="text-sm font-semibold text-zinc-800 tabular-nums">
+                              {fmtTokens(entry.inputTokenCount)}
+                            </p>
+                          </div>
+                        )}
+                        {entry.outputTokenCount !== null && (
+                          <div className="bg-zinc-50 rounded-md px-3 py-2">
+                            <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium mb-0.5">
+                              Output tokens
+                            </p>
+                            <p className="text-sm font-semibold text-zinc-800 tabular-nums">
+                              {fmtTokens(entry.outputTokenCount)}
+                            </p>
+                          </div>
+                        )}
+                        {entry.tokenCount !== null && (
+                          <div className="bg-zinc-50 rounded-md px-3 py-2">
+                            <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium mb-0.5">
+                              Total tokens
+                            </p>
+                            <p className="text-sm font-semibold text-zinc-800 tabular-nums">
+                              {fmtTokens(entry.tokenCount)}
+                            </p>
+                          </div>
+                        )}
+                        {cost && (
+                          <div className="bg-emerald-50 rounded-md px-3 py-2">
+                            <p className="text-[10px] text-emerald-600 uppercase tracking-wider font-medium mb-0.5">
+                              Est. cost
+                            </p>
+                            <p className="text-sm font-semibold text-emerald-700 tabular-nums">
+                              {cost}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     )}
-                    <div className="flex items-center justify-between pt-1">
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-1 border-t border-zinc-100">
                       <span className="text-xs text-zinc-300">
-                        ID: {entry.id} · User #{entry.userId} · {new Date(entry.createdAt).toLocaleString()}
+                        ID: {entry.id} · User #{entry.userId} ·{" "}
+                        {new Date(entry.createdAt).toLocaleString()}
                       </span>
                       <button
                         onClick={() => handleDelete(entry.id)}

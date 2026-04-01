@@ -8,6 +8,9 @@ declare global {
         id: number;
         user_id: number;
       };
+      user?: {
+        id: number;
+      };
     }
   }
 }

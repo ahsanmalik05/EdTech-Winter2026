@@ -1,4 +1,5 @@
 import express from "express";
+
 import { register, login, me, verifyEmail, resendVerificationEmail } from "../controllers/auth.js";
 
 const router = express.Router();

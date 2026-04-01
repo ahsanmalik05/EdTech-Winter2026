@@ -1,12 +1,12 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import config from './config/config.js';
 import { db } from './db/index.js';
 import { users } from './db/schema.js';
-import { chat } from './services/cohere.js';
 import { loadGlossaryCache } from './services/glossary.js';
 import authRouter from './routes/auth.js';
 import apiKeysRouter from './routes/api_key.js';
@@ -43,6 +43,7 @@ app.use(cors({
     credentials: true,
 }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.use('/api', apiKeyMiddleware);
 
