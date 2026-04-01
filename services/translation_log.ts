@@ -143,21 +143,96 @@ async function fetchWorksheetStats() {
         .where(gte(templates.createdAt, todayStart));
     const generatedToday = todayRow?.total ?? 0;
 
-    const bySubject = await db.select({ subject: templates.subject, count: count() })
+    const bySubject = await db.select({
+            subject: sql<string>`MAX(${templates.subject})`,
+            count: count(),
+        })
         .from(templates)
-        .groupBy(templates.subject)
+        .groupBy(sql`LOWER(${templates.subject})`)
         .orderBy(sql`count(*) desc`);
 
-    const byGradeLevel = await db.select({ gradeLevel: templates.gradeLevel, count: count() })
+    const byGradeLevel = await db.select({
+            gradeLevel: sql<string>`MAX(${templates.gradeLevel})`,
+            count: count(),
+        })
         .from(templates)
-        .groupBy(templates.gradeLevel)
+        .groupBy(sql`LOWER(${templates.gradeLevel})`)
         .orderBy(sql`count(*) desc`);
 
     return { totalGenerated, generatedToday, bySubject, byGradeLevel };
 }
 
+async function fetchTemplatesByDay() {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+    return db.select({
+            date: sql<string>`TO_CHAR(${templates.createdAt}, 'YYYY-MM-DD')`,
+            count: count(),
+        })
+        .from(templates)
+        .where(gte(templates.createdAt, thirtyDaysAgo))
+        .groupBy(sql`TO_CHAR(${templates.createdAt}, 'YYYY-MM-DD')`)
+        .orderBy(sql`TO_CHAR(${templates.createdAt}, 'YYYY-MM-DD')`);
+}
+
+async function fetchTopSubjectTopicPairs() {
+    return db.select({
+            subject: sql<string>`MAX(${templates.subject})`,
+            topic: sql<string>`MAX(${templates.topic})`,
+            count: count(),
+        })
+        .from(templates)
+        .groupBy(sql`LOWER(${templates.subject})`, sql`LOWER(${templates.topic})`)
+        .orderBy(sql`count(*) desc`)
+        .limit(10);
+}
+
+async function fetchTemplatesPerUser() {
+    const rows = await db.select({
+            userId: templates.createdByUserId,
+            count: count(),
+        })
+        .from(templates)
+        .where(isNotNull(templates.createdByUserId))
+        .groupBy(templates.createdByUserId)
+        .orderBy(sql`count(*) desc`)
+        .limit(10);
+
+    const [avgRow] = await db.select({
+            avg: avg(sql<number>`sub.cnt`),
+        })
+        .from(
+            sql`(SELECT COUNT(*) as cnt FROM templates WHERE created_by_user_id IS NOT NULL GROUP BY created_by_user_id) as sub`
+        );
+
+    return {
+        topCreators: rows.map(r => ({ userId: r.userId!, count: r.count })),
+        averagePerUser: parseAvg(avgRow?.avg as string | null),
+    };
+}
+
+async function fetchGradeLevelBySubject() {
+    const rows = await db.select({
+            subject: sql<string>`MAX(${templates.subject})`,
+            gradeLevel: sql<string>`MAX(${templates.gradeLevel})`,
+            count: count(),
+        })
+        .from(templates)
+        .groupBy(sql`LOWER(${templates.subject})`, sql`LOWER(${templates.gradeLevel})`)
+        .orderBy(sql`LOWER(${templates.subject})`, sql`count(*) desc`);
+
+    const grouped: Record<string, { gradeLevel: string; count: number }[]> = {};
+    for (const r of rows) {
+        if (!grouped[r.subject]) grouped[r.subject] = [];
+        grouped[r.subject]!.push({ gradeLevel: r.gradeLevel, count: r.count });
+    }
+    return Object.entries(grouped).map(([subject, grades]) => ({ subject, grades }));
+}
+
 export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
-    const [total, translationsToday, successful, byLanguage, byModel, averageLatencyMs, tokenStats, tokensByLanguage, topUsers, worksheetStats] =
+    const [total, translationsToday, successful, byLanguage, byModel, averageLatencyMs, tokenStats, tokensByLanguage, topUsers, worksheetStats, templatesByDay, topSubjectTopicPairs, templatesPerUser, gradeLevelBySubject] =
         await Promise.all([
             fetchTotalCount(),
             fetchTodayCount(),
@@ -169,6 +244,10 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
             fetchTokensByLanguage(),
             fetchTopUsers(),
             fetchWorksheetStats(),
+            fetchTemplatesByDay(),
+            fetchTopSubjectTopicPairs(),
+            fetchTemplatesPerUser(),
+            fetchGradeLevelBySubject(),
         ]);
 
     return {
@@ -183,6 +262,10 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
         topUsers,
         cacheHitRate: null,
         worksheetStats,
+        templatesByDay,
+        topSubjectTopicPairs,
+        templatesPerUser,
+        gradeLevelBySubject,
     };
 }
 

@@ -51,5 +51,10 @@ export const validationSchema = z.object({
     .describe("List of specific issues found, empty if valid"),
 });
 
+export const normalizedInputSchema = z.object({
+  subject: z.string().describe("The properly capitalized, full (non-abbreviated) subject name. E.g. 'math' → 'Math', 'comp sci' → 'Computer Science', 'Cs' → 'Computer Science', 'Tax Law' → 'Tax Law'."),
+  gradeLevel: z.string().describe("The properly formatted grade level. E.g. '5th grade' → '5th Grade', '10th grade' → '10th Grade', '3' → '3rd Grade', 'PhD' → 'PhD'."),
+});
+
 export type TemplateOutput = z.infer<typeof templateSchema>;
 export type ValidationOutput = z.infer<typeof validationSchema>;

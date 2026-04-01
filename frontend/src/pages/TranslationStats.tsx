@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Loader2, RefreshCw, Clock, Zap, Globe, Hash, Users, BarChart3, FileText, GraduationCap, BookOpen } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useQuery } from '../api/useQuery';
@@ -20,6 +21,16 @@ interface TranslationStats {
     bySubject: { subject: string; count: number }[];
     byGradeLevel: { gradeLevel: string; count: number }[];
   };
+  templatesByDay: { date: string; count: number }[];
+  topSubjectTopicPairs: { subject: string; topic: string; count: number }[];
+  templatesPerUser: {
+    topCreators: { userId: number; count: number }[];
+    averagePerUser: number | null;
+  };
+  gradeLevelBySubject: {
+    subject: string;
+    grades: { gradeLevel: string; count: number }[];
+  }[];
 }
 
 function StatCard({
@@ -81,6 +92,7 @@ export function TranslationStats() {
   const { data: stats, loading, error, refetch } = useQuery<TranslationStats>(
     '/api/translate/stat',
   );
+  const [subjectFilter, setSubjectFilter] = useState<string>('all');
 
   const fmt = (n: number | null | undefined) =>
     n !== null && n !== undefined ? n.toLocaleString() : '—';
@@ -307,21 +319,43 @@ export function TranslationStats() {
 
                 {stats.worksheetStats.byGradeLevel.length > 0 && (
                   <div className="border border-zinc-200 rounded-lg p-5">
-                    <div className="flex items-center gap-2.5 mb-4">
-                      <GraduationCap className="size-4 text-zinc-400" />
-                      <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                        By Grade Level
-                      </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <GraduationCap className="size-4 text-zinc-400" />
+                        <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                          By Grade Level
+                        </h3>
+                      </div>
+                      {stats.gradeLevelBySubject.length > 0 && (
+                        <select
+                          value={subjectFilter}
+                          onChange={(e) => setSubjectFilter(e.target.value)}
+                          className="text-xs border border-zinc-200 rounded-md px-2 py-1 text-zinc-600 bg-white"
+                        >
+                          <option value="all">All Subjects</option>
+                          {stats.gradeLevelBySubject.map((s) => (
+                            <option key={s.subject} value={s.subject}>{s.subject}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                     <div className="flex flex-col gap-2.5">
-                      {stats.worksheetStats.byGradeLevel.map((item) => (
-                        <BarRow
-                          key={item.gradeLevel}
-                          label={item.gradeLevel}
-                          value={item.count}
-                          max={stats.worksheetStats.byGradeLevel[0]?.count ?? 1}
-                        />
-                      ))}
+                      {(() => {
+                        const filtered = subjectFilter === 'all'
+                          ? stats.worksheetStats.byGradeLevel
+                          : stats.gradeLevelBySubject
+                              .find((s) => s.subject === subjectFilter)
+                              ?.grades.map((g) => ({ gradeLevel: g.gradeLevel, count: g.count }))
+                            ?? [];
+                        return filtered.map((item) => (
+                          <BarRow
+                            key={item.gradeLevel}
+                            label={item.gradeLevel}
+                            value={item.count}
+                            max={filtered[0]?.count ?? 1}
+                          />
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}

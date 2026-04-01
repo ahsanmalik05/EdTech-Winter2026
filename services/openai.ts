@@ -1,8 +1,36 @@
-import { generateText, Output } from "ai";
+import { generateObject, generateText, Output } from "ai";
 import { openai } from "@ai-sdk/openai";
 import type { TemplateSections } from "../types/templates.js";
-import { templateSchema, validationSchema, type TemplateOutput } from "./prompts/schemas.js";
+import { normalizedInputSchema, templateSchema, validationSchema, type TemplateOutput } from "./prompts/schemas.js";
 import { GENERATION_SYSTEM, VALIDATION_SYSTEM, baseContext } from "./prompts/system.js";
+
+export async function normalizeInputs(
+  subject: string,
+  gradeLevel: string,
+): Promise<{ subject: string; gradeLevel: string }> {
+  try {
+    const { object } = await generateObject({
+      model: openai("gpt-5-nano"),
+      schema: normalizedInputSchema,
+      prompt: `Normalize the following educational template inputs.
+
+Rules:
+- Subject: Title Case the full, standard subject name. Expand abbreviations (e.g. "comp sci" → "Computer Science", "Cs" → "Computer Science", "bio" → "Biology"). If it's already correct, keep it as-is.
+- Grade Level: Capitalize properly (e.g. "5th grade" → "5th Grade"). If just a number, infer the grade (e.g. "3" → "3rd Grade"). If already correct, keep as-is.
+
+Inputs:
+Subject: ${subject}
+Grade Level: ${gradeLevel}`,
+    });
+    return { subject: object.subject, gradeLevel: object.gradeLevel };
+  } catch (err) {
+    console.error("Input normalization failed, using title-case fallback:", err);
+    return {
+      subject: subject.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
+      gradeLevel: gradeLevel.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
+    };
+  }
+}
 
 const KNOWLEDGE_TYPES = ["facts", "strategies", "procedures", "rationales"] as const;
 
