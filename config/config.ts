@@ -33,13 +33,11 @@ interface Config {
   smtpPass: string;
   mailFrom: string;
   bucket: {
-    bucketName: string;
+    name: string;
     endpoint: string;
+    region: string;
     accessKeyId: string;
     secretAccessKey: string;
-    region: string;
-    forcePathStyle: boolean;
-    enabled: boolean;
   };
 }
 
@@ -64,20 +62,11 @@ const config: Config = {
   smtpPass: process.env.SMTP_PASS || "",
   mailFrom: process.env.MAIL_FROM || process.env.SMTP_USER || "",
   bucket: {
-    bucketName: process.env.BUCKET || "",
+    name: process.env.BUCKET || "",
     endpoint: process.env.ENDPOINT || "",
+    region: process.env.REGION || "auto",
     accessKeyId: process.env.ACCESS_KEY_ID || "",
     secretAccessKey: process.env.SECRET_ACCESS_KEY || "",
-    region: process.env.REGION || "",
-    forcePathStyle:
-      String(process.env.BUCKET_FORCE_PATH_STYLE || "false") === "true",
-    enabled: Boolean(
-      process.env.BUCKET &&
-        process.env.ENDPOINT &&
-        process.env.ACCESS_KEY_ID &&
-        process.env.SECRET_ACCESS_KEY &&
-        process.env.REGION,
-    ),
   },
 };
 

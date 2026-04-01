@@ -7,9 +7,12 @@ import { fileURLToPath } from 'node:url';
 import config from './config/config.js';
 import { db } from './db/index.js';
 import { users } from './db/schema.js';
-import { loadGlossaryCache } from './services/glossary.js';
+
 import authRouter from './routes/auth.js';
 import apiKeysRouter from './routes/api_key.js';
+
+
+import { loadGlossaryCache } from './services/glossary.js';
 import { apiKeyMiddleware } from './middleware/api_key.js';
 import languagesRouter from './routes/languages.js';
 import translateRouter from './routes/translate.js';
@@ -83,15 +86,19 @@ if (fs.existsSync(frontendIndexPath)) {
 }
 
 async function start() {
-    const termCount = await loadGlossaryCache();
-    console.log(`Glossary cache loaded: ${termCount} terms`);
-
-    app.listen(port, () => {
+    app.listen(port, '0.0.0.0', () => {
         console.log(`Server is running on port ${port}`);
     });
+
+    loadGlossaryCache()
+        .then((termCount) => {
+            console.log(`Glossary cache loaded: ${termCount} terms`);
+        })
+        .catch((error) => {
+            console.warn('Glossary cache warmup failed', error);
+        });
 }
 
 start();
 
 export default app;
-

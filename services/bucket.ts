@@ -1,96 +1,80 @@
-import { randomUUID } from "node:crypto";
-import path from "node:path";
-import fsp from "node:fs/promises";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { createHash } from "crypto";
+import fs from "fs";
+import fsp from "fs/promises";
+import {
+  S3Client,
+  PutObjectCommand,
+  HeadObjectCommand,
+} from "@aws-sdk/client-s3";
 import config from "../config/config.js";
 
-export interface UploadFileToBucketParams {
-  filePath: string;
-  originalName: string;
-  mimeType: string;
-  flow: string;
+const s3 = new S3Client({
+  endpoint: config.bucket.endpoint,
+  region: config.bucket.region,
+  credentials: {
+    accessKeyId: config.bucket.accessKeyId,
+    secretAccessKey: config.bucket.secretAccessKey,
+  },
+  forcePathStyle: true,
+});
+
+export function computeFileHash(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash("sha256");
+    const stream = fs.createReadStream(filePath);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("error", reject);
+  });
 }
 
-export interface BucketUploadResult {
-  bucketName: string;
-  objectKey: string;
+export function computeTextHash(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
-let s3Client: S3Client | null = null;
+function buildObjectKey(hash: string): string {
+  const env = config.nodeEnv || "development";
+  return `pdf-archives/${env}/${hash}.pdf`;
+}
 
-function getS3Client(): S3Client {
-  if (!config.bucket.enabled) {
-    throw new Error("Railway bucket configuration is incomplete");
+export async function objectExists(objectKey: string): Promise<boolean> {
+  try {
+    await s3.send(
+      new HeadObjectCommand({
+        Bucket: config.bucket.name,
+        Key: objectKey,
+      }),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function uploadToBucket(
+  filePath: string,
+  contentHash: string,
+): Promise<{ objectKey: string; uploaded: boolean }> {
+  const objectKey = buildObjectKey(contentHash);
+
+  const exists = await objectExists(objectKey);
+  if (exists) {
+    return { objectKey, uploaded: false };
   }
 
-  if (!s3Client) {
-    s3Client = new S3Client({
-      region: config.bucket.region,
-      endpoint: config.bucket.endpoint,
-      forcePathStyle: config.bucket.forcePathStyle,
-      credentials: {
-        accessKeyId: config.bucket.accessKeyId,
-        secretAccessKey: config.bucket.secretAccessKey,
-      },
-    });
-  }
-
-  return s3Client;
-}
-
-function sanitizeFileName(fileName: string): string {
-  const parsed = path.parse(fileName);
-  const safeBase = parsed.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 120);
-  const ext = parsed.ext.toLowerCase() || ".pdf";
-  const baseName = safeBase || "upload";
-  return `${baseName}${ext}`;
-}
-
-function buildObjectKey(flow: string, originalName: string): string {
-  const now = new Date();
-  const year = String(now.getUTCFullYear());
-  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(now.getUTCDate()).padStart(2, "0");
-  const timestamp = now.toISOString().replace(/[:.]/g, "-");
-  const safeOriginalName = sanitizeFileName(originalName);
-
-  return [
-    "pdf-archives",
-    config.nodeEnv,
-    flow,
-    year,
-    month,
-    day,
-    `${timestamp}-${randomUUID()}-${safeOriginalName}`,
-  ].join("/");
-}
-
-export function isBucketConfigured(): boolean {
-  return config.bucket.enabled;
-}
-
-export async function uploadFileToBucket(
-  params: UploadFileToBucketParams,
-): Promise<BucketUploadResult> {
-  const client = getS3Client();
-  const objectKey = buildObjectKey(params.flow, params.originalName);
-  const body = await fsp.readFile(params.filePath);
-
-  await client.send(
+  const body = await fsp.readFile(filePath);
+  await s3.send(
     new PutObjectCommand({
-      Bucket: config.bucket.bucketName,
+      Bucket: config.bucket.name,
       Key: objectKey,
       Body: body,
-      ContentType: params.mimeType,
+      ContentType: "application/pdf",
     }),
   );
 
-  return {
-    bucketName: config.bucket.bucketName,
-    objectKey,
-  };
+  return { objectKey, uploaded: true };
+}
+
+export function buildObjectKeyFromHash(hash: string): string {
+  return buildObjectKey(hash);
 }

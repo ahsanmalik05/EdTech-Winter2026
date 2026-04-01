@@ -16,6 +16,10 @@ export interface LogTranslationParams {
   outputTokenCount: number | undefined;
   costUsd: number | undefined;
   latencyMs: number;
+  sourceTextHash?: string | undefined;
+  sourceDocumentId?: number | undefined;
+  gradeLevel?: string | undefined;
+  cached?: boolean | undefined;
 }
 
 export interface TranslationStats {
@@ -29,7 +33,7 @@ export interface TranslationStats {
   averageTokensPerTranslation: number | null;
   tokensByLanguage: { language: string; totalTokens: number }[];
   topUsers: { userId: number; translations: number }[];
-  cacheHitRate: null;
+  cacheHitRate: number | null;
   totalCostUsd: number | null;
   worksheetStats: {
     totalGenerated: number;
