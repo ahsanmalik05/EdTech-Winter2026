@@ -32,6 +32,16 @@ export interface TranslationStats {
         bySubject: { subject: string; count: number }[];
         byGradeLevel: { gradeLevel: string; count: number }[];
     };
+    templatesByDay: { date: string; count: number }[];
+    topSubjectTopicPairs: { subject: string; topic: string; count: number }[];
+    templatesPerUser: {
+        topCreators: { userId: number; count: number }[];
+        averagePerUser: number | null;
+    };
+    gradeLevelBySubject: {
+        subject: string;
+        grades: { gradeLevel: string; count: number }[];
+    }[];
 }
 
 export interface LogTemplateGenerationParams {
