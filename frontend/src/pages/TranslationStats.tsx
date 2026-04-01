@@ -1,4 +1,4 @@
-import { Loader2, RefreshCw, Clock, Zap, Globe, Hash, Users, BarChart3 } from 'lucide-react';
+import { Loader2, RefreshCw, Clock, Zap, Globe, Hash, Users, BarChart3, FileText, GraduationCap, BookOpen } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useQuery } from '../api/useQuery';
 
@@ -14,6 +14,12 @@ interface TranslationStats {
   tokensByLanguage: { language: string; totalTokens: number }[];
   topUsers: { userId: number; translations: number }[];
   cacheHitRate: null;
+  worksheetStats: {
+    totalGenerated: number;
+    generatedToday: number;
+    bySubject: { subject: string; count: number }[];
+    byGradeLevel: { gradeLevel: string; count: number }[];
+  };
 }
 
 function StatCard({
@@ -100,10 +106,10 @@ export function TranslationStats() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-2xl font-semibold text-zinc-900 text-balance">
-            Translation Stats
+            Platform Stats
           </h2>
           <p className="text-zinc-400 mt-1 text-sm text-pretty">
-            Usage metrics and analytics for the translation service.
+            Usage metrics and analytics for translations and worksheet generation.
           </p>
         </div>
         <button
@@ -253,6 +259,84 @@ export function TranslationStats() {
                 Stats will appear here after your first translation
               </p>
             </div>
+          )}
+
+          {/* Worksheet Generation Stats */}
+          {stats.worksheetStats && (
+            <>
+              <div className="border-t border-zinc-200 pt-8">
+                <h3 className="text-lg font-semibold text-zinc-900 mb-4">Worksheet Generation</h3>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-2 gap-3">
+                <StatCard
+                  label="Worksheets Generated"
+                  value={fmt(stats.worksheetStats.totalGenerated)}
+                  sub={`${fmt(stats.worksheetStats.generatedToday)} today`}
+                  icon={<FileText className="size-4 text-zinc-400" />}
+                />
+                <StatCard
+                  label="Subjects"
+                  value={fmt(stats.worksheetStats.bySubject.length)}
+                  sub="unique subjects"
+                  icon={<BookOpen className="size-4 text-zinc-400" />}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {stats.worksheetStats.bySubject.length > 0 && (
+                  <div className="border border-zinc-200 rounded-lg p-5">
+                    <div className="flex items-center gap-2.5 mb-4">
+                      <BookOpen className="size-4 text-zinc-400" />
+                      <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        By Subject
+                      </h3>
+                    </div>
+                    <div className="flex flex-col gap-2.5">
+                      {stats.worksheetStats.bySubject.map((item) => (
+                        <BarRow
+                          key={item.subject}
+                          label={item.subject}
+                          value={item.count}
+                          max={stats.worksheetStats.bySubject[0]?.count ?? 1}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {stats.worksheetStats.byGradeLevel.length > 0 && (
+                  <div className="border border-zinc-200 rounded-lg p-5">
+                    <div className="flex items-center gap-2.5 mb-4">
+                      <GraduationCap className="size-4 text-zinc-400" />
+                      <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        By Grade Level
+                      </h3>
+                    </div>
+                    <div className="flex flex-col gap-2.5">
+                      {stats.worksheetStats.byGradeLevel.map((item) => (
+                        <BarRow
+                          key={item.gradeLevel}
+                          label={item.gradeLevel}
+                          value={item.count}
+                          max={stats.worksheetStats.byGradeLevel[0]?.count ?? 1}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {stats.worksheetStats.totalGenerated === 0 && (
+                <div className="border border-zinc-200 rounded-lg p-12 text-center">
+                  <FileText className="size-6 text-zinc-200 mx-auto mb-2" />
+                  <p className="text-zinc-400 text-sm">No worksheets generated yet</p>
+                  <p className="text-zinc-300 text-xs mt-1">
+                    Stats will appear here after your first worksheet generation
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       ) : null}

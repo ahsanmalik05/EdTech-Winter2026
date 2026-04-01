@@ -11,7 +11,7 @@ const openai = new OpenAI({
   apiKey: config.openaiApiKey,
 });
 
-async function chatWithFallback(prompt: string, model: string) {
+async function chatWithFallback(prompt: string, model: string): Promise<{ text: string | null; tokenCount: number | null }> {
   try {
     const response = await cohere.chat({
       model,
@@ -19,7 +19,10 @@ async function chatWithFallback(prompt: string, model: string) {
     });
 
     if (response.message?.content?.[0]?.type === 'text') {
-      return response.message.content[0].text;
+      const tokenCount =
+        (response.usage?.tokens?.inputTokens ?? 0) +
+        (response.usage?.tokens?.outputTokens ?? 0) || null;
+      return { text: response.message.content[0].text, tokenCount };
     }
   } catch (error) {
     console.error('Cohere chat failed, falling back to OpenAI:', error);
@@ -30,11 +33,15 @@ async function chatWithFallback(prompt: string, model: string) {
     input: prompt,
   });
 
-  return fallback.output_text || null;
+  const tokenCount =
+    (fallback.usage?.input_tokens ?? 0) +
+    (fallback.usage?.output_tokens ?? 0) || null;
+  return { text: fallback.output_text || null, tokenCount };
 }
 
 export async function chat(message: string, model: string = 'command-a-translate-08-2025') {
-  return chatWithFallback(message, model);
+  const result = await chatWithFallback(message, model);
+  return result.text;
 }
 
 export async function chatStream(
@@ -92,12 +99,14 @@ ${glossaryBlock}`.trim();
   return chatWithFallback(prompt, model);
 }
 
+export type TranslateResult = { text: string | null; tokenCount: number | null };
+
 export async function translateContentStream(
   content: string,
   targetLanguage: string,
   onToken: (token: string) => void,
   model: string = 'command-a-translate-08-2025'
-) {
+): Promise<{ tokenCount: number | null }> {
   const matched = matchTerms(content);
   const glossaryBlock = buildGlossaryPrompt(matched);
 
@@ -126,11 +135,17 @@ ${glossaryBlock}`.trim();
     ],
   });
 
+  let tokenCount: number | null = null;
   for await (const event of stream) {
     if (event.type === 'content-delta' && event.delta?.message?.content?.text) {
       onToken(event.delta.message.content.text);
     }
+    if (event.type === 'message-end' && (event as any).delta?.usage?.tokens) {
+      const tokens = (event as any).delta.usage.tokens;
+      tokenCount = (tokens.inputTokens ?? 0) + (tokens.outputTokens ?? 0) || null;
+    }
   }
+  return { tokenCount };
 }
 
 export async function translateBatch(

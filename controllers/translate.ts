@@ -139,7 +139,7 @@ export const batchTranslateStream = async (req: Request, res: Response) => {
 
       sendEvent("translating", { fileName });
 
-      const translatedText = await translateContent(text, targetLanguage);
+      const { text: translatedText } = await translateContent(text, targetLanguage);
 
       if (translatedText) {
         sendEvent("item_done", {
