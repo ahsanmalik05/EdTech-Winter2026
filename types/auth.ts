@@ -11,6 +11,7 @@ export interface AuthLoginRequest {
 export interface AuthUser {
   id: number;
   email: string;
+  emailVerified?: boolean;
   createdAt?: Date;
 }
 
