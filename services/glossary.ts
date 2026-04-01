@@ -4,8 +4,41 @@ import { translation_glossary, type GlossaryTerm } from '../db/schema.js';
 let glossaryCache: Map<string, GlossaryTerm> = new Map();
 let matchRegex: RegExp | null = null;
 
+function getErrorCode(error: unknown): string | undefined {
+  if (error && typeof error === 'object') {
+    const err = error as { code?: string; cause?: { code?: string } };
+    return err.code ?? err.cause?.code;
+  }
+  return undefined;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+/**
+ * Load all glossary terms from DB into memory and build the match regex.
+ * Call once on server startup.
+ */
 export async function loadGlossaryCache(): Promise<number> {
-  const terms = await db.select().from(translation_glossary);
+  let terms: GlossaryTerm[];
+
+  try {
+    terms = await db.select().from(translation_glossary);
+  } catch (error) {
+    // Keep the app running even if DB/DNS is temporarily unavailable.
+    glossaryCache = new Map();
+    matchRegex = null;
+
+    const code = getErrorCode(error);
+    const message = getErrorMessage(error);
+    console.warn(
+      `Glossary cache unavailable (${code ?? 'unknown'}): ${message}`,
+    );
+
+    return 0;
+  }
 
   glossaryCache = new Map();
   for (const term of terms) {

@@ -15,6 +15,7 @@ import type {
   UpdateTemplateRequest,
 } from "../types/templates.js";
 
+export const DEFAULT_TEMPLATE_MODEL = "gpt-5-nano";
 const SECTION_ORDER: Array<keyof TemplateSections> = [
   "introduction",
   "model_assessment",

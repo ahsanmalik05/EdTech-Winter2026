@@ -27,3 +27,15 @@ export interface TranslationStats {
     topUsers: { userId: number; translations: number }[];
     cacheHitRate: null;
 }
+
+export interface LogTemplateGenerationParams {
+    templateId?: number;
+    userId?: number;
+    subject: string;
+    topic: string;
+    gradeLevel: string;
+    model: string;
+    success: boolean;
+    errorMessage?: string;
+    latencyMs: number;
+}
