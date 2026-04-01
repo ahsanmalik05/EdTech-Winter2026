@@ -32,6 +32,13 @@ interface Config {
   smtpUser: string;
   smtpPass: string;
   mailFrom: string;
+  bucket: {
+    name: string;
+    endpoint: string;
+    region: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+  };
 }
 
 const config: Config = {
@@ -54,6 +61,13 @@ const config: Config = {
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
   mailFrom: process.env.MAIL_FROM || process.env.SMTP_USER || "",
+  bucket: {
+    name: process.env.bucketName || "",
+    endpoint: process.env.endpoint || "",
+    region: process.env.region || "auto",
+    accessKeyId: process.env.accessKeyId || "",
+    secretAccessKey: process.env.secretAccessKey || "",
+  },
 };
 
 export default config;

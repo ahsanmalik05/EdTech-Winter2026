@@ -54,6 +54,7 @@
   "dependencies": {
     "@ai-sdk/cohere": "^3.0.27",
     "@ai-sdk/openai": "^3.0.48",
+    "@aws-sdk/client-s3": "^3.1022.0",
     "ai": "^6.0.137",
     "bcrypt": "^6.0.0",
     "cohere-ai": "^7.20.0",

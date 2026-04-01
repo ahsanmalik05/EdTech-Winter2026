@@ -12,6 +12,13 @@ import { translateContentStream } from "../services/cohere.js";
 import { validateTranslation } from "../services/validate.js";
 import { logTranslation } from "../services/translation_log.js";
 import { logTranslationValidation } from "../services/translation_validation_log.js";
+import { computeFileHash, computeTextHash, uploadToBucket } from "../services/bucket.js";
+import { findUploadedByHash, recordPdfUpload } from "../services/pdf_uploads.js";
+import {
+  getOrCreateSourceDocument,
+  findCachedTranslation,
+} from "../services/translation_cache.js";
+import fs from "fs";
 
 const DEFAULT_MODEL = "command-a-translate-08-2025";
 /**
@@ -82,7 +89,43 @@ export const uploadPdfFile = async (req: Request, res: Response) => {
     }
 
     const targetLanguage = (req.body.language as string) || "French";
-     const blocks = await extractStructuredTextFromPdf(filePath);
+
+    const contentHash = await computeFileHash(filePath);
+    const fileSize = fs.statSync(filePath).size;
+    const userId = req.apiKey?.user_id;
+
+    const existingUpload = await findUploadedByHash(contentHash);
+    let objectKey: string | undefined;
+    let reusedExisting = false;
+
+    if (existingUpload) {
+      objectKey = existingUpload.objectKey;
+      reusedExisting = true;
+    } else {
+      try {
+        const result = await uploadToBucket(filePath, contentHash);
+        objectKey = result.objectKey;
+        reusedExisting = !result.uploaded;
+      } catch (err) {
+        console.error("Bucket upload failed, continuing without archival:", err);
+      }
+    }
+
+    try {
+      await recordPdfUpload({
+        userId,
+        contentHash,
+        originalName: req.file.originalname,
+        objectKey,
+        fileSizeBytes: fileSize,
+        status: objectKey ? "uploaded" : "failed",
+        reusedExisting,
+      });
+    } catch (err) {
+      console.error("Failed to record PDF upload:", err);
+    }
+
+    const blocks = await extractStructuredTextFromPdf(filePath);
     const extractedText = blocksToText(blocks);
 
     if (!extractedText.trim()) {
@@ -91,12 +134,42 @@ export const uploadPdfFile = async (req: Request, res: Response) => {
       });
     }
 
-    const translatedBlocks = await translateBlocks(blocks, targetLanguage);
-    const translatedText = blocksToText(translatedBlocks);
-    const translatorNotes = translatedBlocks
-      .map((b) => b.notes)
-      .filter((n): n is string => !!n)
-      .join("\n\n");
+    const sourceTextHash = computeTextHash(extractedText);
+    let sourceDocumentId: number | undefined;
+    try {
+      const doc = await getOrCreateSourceDocument(extractedText);
+      sourceDocumentId = doc.id;
+    } catch (err) {
+      console.error("Failed to store source document:", err);
+    }
+
+    const cacheKey = {
+      sourceTextHash,
+      targetLanguage,
+      model: DEFAULT_MODEL,
+      gradeLevel: null as string | null,
+    };
+
+    const cached = await findCachedTranslation(cacheKey);
+
+    let translatedText: string;
+    let translatorNotes = "";
+    let totalTokenCount = 0;
+    let wasCached = false;
+
+    if (cached) {
+      translatedText = cached.translatedText;
+      totalTokenCount = cached.tokenCount ?? 0;
+      wasCached = true;
+    } else {
+      const translatedBlocks = await translateBlocks(blocks, targetLanguage);
+      translatedText = blocksToText(translatedBlocks);
+      translatorNotes = translatedBlocks
+        .map((b) => b.notes)
+        .filter((n): n is string => !!n)
+        .join("\n\n");
+      totalTokenCount = translatedBlocks.reduce((sum, block) => sum + (block.tokenCount ?? 0), 0);
+    }
 
     const latencyMs = Date.now() - start;
 
@@ -109,14 +182,17 @@ export const uploadPdfFile = async (req: Request, res: Response) => {
           sourceLanguage: undefined,
           targetLanguage,
           model: DEFAULT_MODEL,
-          tokenCount: translatedBlocks.reduce((sum, block) => sum + (block.tokenCount ?? 0), 0),
+          tokenCount: totalTokenCount,
           inputTokenCount: undefined,
           outputTokenCount: undefined,
           costUsd: undefined,
           latencyMs,
+          sourceTextHash,
+          sourceDocumentId,
+          cached: wasCached,
         });
 
-        if (translationLogId) {
+        if (translationLogId && !wasCached) {
           void validateTranslation(extractedText, translatedText, targetLanguage)
             .then((validation) => {
               void logTranslationValidation({
@@ -177,6 +253,41 @@ export const uploadPdfFileStream = async (req: Request, res: Response) => {
 
     sendEvent("status", { step: "extracting" });
 
+    const contentHash = await computeFileHash(filePath);
+    const fileSize = fs.statSync(filePath).size;
+    const userId = req.apiKey?.user_id;
+
+    const existingUpload = await findUploadedByHash(contentHash);
+    let objectKey: string | undefined;
+    let reusedExisting = false;
+
+    if (existingUpload) {
+      objectKey = existingUpload.objectKey;
+      reusedExisting = true;
+    } else {
+      try {
+        const result = await uploadToBucket(filePath, contentHash);
+        objectKey = result.objectKey;
+        reusedExisting = !result.uploaded;
+      } catch (err) {
+        console.error("Bucket upload failed, continuing without archival:", err);
+      }
+    }
+
+    try {
+      await recordPdfUpload({
+        userId,
+        contentHash,
+        originalName: req.file.originalname,
+        objectKey,
+        fileSizeBytes: fileSize,
+        status: objectKey ? "uploaded" : "failed",
+        reusedExisting,
+      });
+    } catch (err) {
+      console.error("Failed to record PDF upload:", err);
+    }
+
     const blocks = await extractStructuredTextFromPdf(filePath);
     const extractedText = blocksToText(blocks);
 
@@ -193,6 +304,62 @@ export const uploadPdfFileStream = async (req: Request, res: Response) => {
       targetLanguage,
       extractedText,
     });
+
+    const sourceTextHash = computeTextHash(extractedText);
+    let sourceDocumentId: number | undefined;
+    try {
+      const doc = await getOrCreateSourceDocument(extractedText);
+      sourceDocumentId = doc.id;
+    } catch (err) {
+      console.error("Failed to store source document:", err);
+    }
+
+    const cacheKey = {
+      sourceTextHash,
+      targetLanguage,
+      model: DEFAULT_MODEL,
+      gradeLevel: null as string | null,
+    };
+
+    const cached = await findCachedTranslation(cacheKey);
+
+    if (cached) {
+      sendEvent("status", { step: "translating" });
+      const start = Date.now();
+
+      for (const token of cached.translatedText.split(/(?<=\s)/)) {
+        sendEvent("token", { token });
+      }
+      const latencyMs = Date.now() - start;
+
+      sendEvent("translated", { translatedText: cached.translatedText });
+
+      if (req.apiKey) {
+        try {
+          await logTranslation({
+            userId: req.apiKey.user_id,
+            sourceText: extractedText,
+            translatedText: cached.translatedText,
+            sourceLanguage: undefined,
+            targetLanguage,
+            model: DEFAULT_MODEL,
+            tokenCount: cached.tokenCount ?? undefined,
+            inputTokenCount: undefined,
+            outputTokenCount: undefined,
+            costUsd: undefined,
+            latencyMs,
+            sourceTextHash,
+            sourceDocumentId,
+            cached: true,
+          });
+        } catch (logErr) {
+          console.error("Failed to log cached PDF translation:", logErr);
+        }
+      }
+
+      sendEvent("complete", {});
+      return res.end();
+    }
 
     sendEvent("status", { step: "translating" });
     const start = Date.now();
@@ -221,6 +388,9 @@ export const uploadPdfFileStream = async (req: Request, res: Response) => {
           outputTokenCount: undefined,
           costUsd: undefined,
           latencyMs,
+          sourceTextHash,
+          sourceDocumentId,
+          cached: false,
         });
       } catch (logErr) {
         console.error("Failed to log streamed PDF translation:", logErr);
