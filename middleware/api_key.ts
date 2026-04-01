@@ -7,7 +7,7 @@ import { createHash } from "crypto";
 
 export const apiKeyMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try{
-        if (req.path.includes("/api/auth") || req.path.includes("/api/keys")) {
+        if (req.path.startsWith("/auth") || req.path.startsWith("/keys")) {
             return next();
         }
         const apiKey = req.headers["x-api-key"] as string;

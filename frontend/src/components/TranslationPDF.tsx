@@ -92,7 +92,7 @@ interface TranslationPDFProps {
   fontFamily?: string;
 }
 
-export function TranslationPDF({ fileName, targetLanguage, translatedText, originalText, fontFamily = 'Noto Sans' }: TranslationPDFProps) {
+export function TranslationPDF({ fileName, targetLanguage, translatedText, fontFamily = 'Noto Sans' }: TranslationPDFProps) {
   const date = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
