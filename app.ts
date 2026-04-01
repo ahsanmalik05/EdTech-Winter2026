@@ -86,15 +86,19 @@ if (fs.existsSync(frontendIndexPath)) {
 }
 
 async function start() {
-    const termCount = await loadGlossaryCache();
-    console.log(`Glossary cache loaded: ${termCount} terms`);
-
-    app.listen(3000, '0.0.0.0', () => {
+    app.listen(port, '0.0.0.0', () => {
         console.log(`Server is running on port ${port}`);
     });
+
+    loadGlossaryCache()
+        .then((termCount) => {
+            console.log(`Glossary cache loaded: ${termCount} terms`);
+        })
+        .catch((error) => {
+            console.warn('Glossary cache warmup failed', error);
+        });
 }
 
 start();
 
 export default app;
-
