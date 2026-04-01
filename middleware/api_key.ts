@@ -11,7 +11,7 @@ export const apiKeyMiddleware = async (
   next: NextFunction,
 ) => {
   try {
-    if (req.path.startsWith("/api/auth") || req.path.startsWith("/api/keys")) {
+    if (req.path.startsWith("/auth") || req.path.startsWith("/keys")) {
       return next();
     }
     const apiKey = req.headers["x-api-key"] as string;
