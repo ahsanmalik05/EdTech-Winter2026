@@ -125,20 +125,21 @@ export const me = async (req: Request, res: Response) => {
 export const verifyEmail = async (req: Request, res: Response) => {
   try {
     const token = req.query.token;
+    const resultPageBase = `${config.appBaseUrl}/email-verified`;
 
     if (typeof token !== 'string' || token.trim() === '') {
-      return res.status(400).json({ error: 'Verification token is required' } as ErrorResponse);
+      return res.redirect(`${resultPageBase}?status=error&message=${encodeURIComponent('Verification token is required')}`);
     }
 
     const userId = await consumeEmailVerificationToken(token.trim());
     if (!userId) {
-      return res.status(400).json({ error: 'Invalid or expired verification token' } as ErrorResponse);
+      return res.redirect(`${resultPageBase}?status=error&message=${encodeURIComponent('Invalid or expired verification link')}`);
     }
 
-    return res.status(200).json({ message: 'Email verified successfully' });
+    return res.redirect(`${resultPageBase}?status=success`);
   } catch (error) {
     console.error('Error verifying email:', error);
-    return res.status(500).json({ error: 'Failed to verify email' } as ErrorResponse);
+    return res.redirect(`${config.appBaseUrl}/email-verified?status=error&message=${encodeURIComponent('Verification failed. Please request a new email.')}`);
   }
 };
 

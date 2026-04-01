@@ -17,6 +17,7 @@ import { TranslationStats } from './pages/TranslationStats';
 import { TranslationLog } from './pages/TranslationLog';
 import { TemplateGenerationLog } from './pages/TemplateGenerationLog';
 import { LanguageManager } from './pages/LanguageManager';
+import { EmailVerificationResult } from './pages/EmailVerificationResult';
 
 interface AppUser {
   id: number;
@@ -195,6 +196,7 @@ export function App() {
           )
         }
       />
+      <Route path="/email-verified" element={<EmailVerificationResult />} />
 
       <Route
         element={
