@@ -7,9 +7,9 @@ export function EmailVerificationResult() {
   const message = searchParams.get('message');
 
   const isSuccess = status === 'success';
-  const title = isSuccess ? 'Email verified successfully' : 'Email verification failed';
+  const title = isSuccess ? 'You are verified' : 'Email verification failed';
   const description = isSuccess
-    ? 'Your account is now verified. You can sign in and continue.'
+    ? 'Your account has been verified successfully. You can close this tab and sign in.'
     : message || 'This verification link is invalid or expired. Please request a new verification email.';
 
   return (
@@ -31,7 +31,7 @@ export function EmailVerificationResult() {
             to="/login"
             className="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
           >
-            Go to Login
+            Back to Login
           </Link>
           {!isSuccess && (
             <Link
