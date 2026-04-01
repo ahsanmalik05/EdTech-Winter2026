@@ -13,6 +13,7 @@ import translateRouter from './routes/translate.js';
 import type { TranslationResponse } from './types/translation.js';
 import templatesRouter from './routes/templates.js';
 import translationLogRouter from './routes/translation_log.js';
+import templateGenerationLogRouter from './routes/template_generation_log.js';
 import type { CohereResponse, ErrorResponse } from './types/response.js';
 const { port, nodeEnv, frontendUrl } = config;
 const allowedOrigins = [frontendUrl];
@@ -43,6 +44,7 @@ app.use("/api/languages", languagesRouter);
 app.use("/api/translate", translateRouter);
 app.use("/api/templates", templatesRouter);
 app.use("/api/translation-log", translationLogRouter);
+app.use("/api/template-generation-log", templateGenerationLogRouter);
 
 async function start() {
     const termCount = await loadGlossaryCache();

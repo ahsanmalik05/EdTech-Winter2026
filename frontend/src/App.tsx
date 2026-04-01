@@ -15,6 +15,7 @@ import { TranslationStudio } from './pages/TranslationStudio';
 import { TemplateGenerator } from './pages/TemplateGenerator';
 import { TranslationStats } from './pages/TranslationStats';
 import { TranslationLog } from './pages/TranslationLog';
+import { TemplateGenerationLog } from './pages/TemplateGenerationLog';
 import { LanguageManager } from './pages/LanguageManager';
 
 interface AppUser {
@@ -78,6 +79,10 @@ function AppLayout({
             <NavLink to="/logs" className={navLinkClass}>
               <ScrollText className="size-3.5" />
               Logs
+            </NavLink>
+            <NavLink to="/template-logs" className={navLinkClass}>
+              <ScrollText className="size-3.5" />
+              Template Logs
             </NavLink>
             <NavLink to="/stats" className={navLinkClass}>
               <BarChart3 className="size-3.5" />
@@ -211,6 +216,10 @@ export function App() {
         <Route
           path="/logs"
           element={apiKey ? <TranslationLog /> : <NeedKeyPrompt />}
+        />
+        <Route
+          path="/template-logs"
+          element={apiKey ? <TemplateGenerationLog /> : <NeedKeyPrompt />}
         />
         <Route
           path="/stats"

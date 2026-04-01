@@ -1,11 +1,13 @@
 import type { Request, Response } from "express";
 import {
+  DEFAULT_TEMPLATE_MODEL,
   generateTemplate,
   getTemplateById,
   listTemplates,
   updateTemplate,
   deactivateTemplate,
 } from "../services/templates.js";
+import { logTemplateGeneration } from "../services/template_generation_log.js";
 import type {
   GenerateTemplateRequest,
   ListTemplatesQuery,
@@ -16,9 +18,10 @@ export const generate = async (
   req: Request<object, object, GenerateTemplateRequest>,
   res: Response
 ) => {
-  try {
-    const { subject, topic, gradeLevel } = req.body;
+  const startedAt = Date.now();
+  const { subject, topic, gradeLevel } = req.body;
 
+  try {
     if (!subject || typeof subject !== "string") {
       res.status(400).json({ error: "subject is required and must be a string" });
       return;
@@ -33,9 +36,48 @@ export const generate = async (
     }
 
     const template = await generateTemplate({ subject, topic, gradeLevel });
+    const latencyMs = Date.now() - startedAt;
+
+    logTemplateGeneration({
+      templateId: template.id,
+      ...(req.apiKey ? { userId: req.apiKey.user_id } : {}),
+      subject,
+      topic,
+      gradeLevel,
+      model: DEFAULT_TEMPLATE_MODEL,
+      success: true,
+      latencyMs,
+    }).catch((err) =>
+      console.error("Failed to log template generation:", err),
+    );
+
     res.status(201).json(template);
   } catch (error) {
     console.error("Template generation error:", error);
+    const latencyMs = Date.now() - startedAt;
+
+    if (
+      typeof subject === "string" &&
+      typeof topic === "string" &&
+      typeof gradeLevel === "string"
+    ) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown template generation error";
+
+      logTemplateGeneration({
+        ...(req.apiKey ? { userId: req.apiKey.user_id } : {}),
+        subject,
+        topic,
+        gradeLevel,
+        model: DEFAULT_TEMPLATE_MODEL,
+        success: false,
+        errorMessage,
+        latencyMs,
+      }).catch((err) =>
+        console.error("Failed to log template generation failure:", err),
+      );
+    }
+
     res.status(500).json({ error: "Failed to generate template" });
   }
 };
