@@ -12,14 +12,17 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [showResend, setShowResend] = useState(false);
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) return;
     setLoading(true);
     setError('');
     setNotice('');
+    setShowResend(false);
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
       const res = await api.post(endpoint, { email: email.trim(), password });
@@ -33,12 +36,30 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
       }
       onAuth(res.data.token, res.data.user);
     } catch (err: any) {
+      const verificationRequired = !!err.response?.data?.verificationRequired;
       setError(
         err.response?.data?.error ||
           (mode === 'login' ? 'Login failed' : 'Registration failed')
       );
+      setShowResend(mode === 'login' && verificationRequired);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email.trim() || resendLoading) return;
+
+    setResendLoading(true);
+    setError('');
+    try {
+      const res = await api.post('/api/auth/resend-verification', { email: email.trim() });
+      setNotice(res.data?.message || 'Verification email sent. Please check your inbox.');
+      setShowResend(false);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to resend verification email.');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -146,6 +167,20 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
               </>
             )}
           </button>
+
+          {showResend && (
+            <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+              <p className="text-xs text-zinc-500 mb-2">Didn&apos;t receive the verification email?</p>
+              <button
+                onClick={handleResendVerification}
+                disabled={!email.trim() || resendLoading}
+                className="w-full flex items-center justify-center gap-2 rounded-md bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-100 disabled:text-zinc-300 disabled:border-zinc-200 disabled:bg-zinc-50 px-4 py-2 text-sm font-medium transition-colors"
+              >
+                {resendLoading ? <Loader2 className="size-4 animate-spin" /> : null}
+                {resendLoading ? 'Sending verification...' : 'Resend verification email'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
