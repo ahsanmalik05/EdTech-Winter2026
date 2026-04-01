@@ -135,6 +135,23 @@ export const translation_log = pgTable("translation_log", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const pdf_uploads = pgTable("pdf_uploads", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  flow: varchar("flow", { length: 64 }).notNull(),
+  fieldName: varchar("field_name", { length: 64 }).notNull(),
+  originalName: varchar("original_name", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 255 }).notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  bucketName: varchar("bucket_name", { length: 255 }),
+  objectKey: text("object_key"),
+  status: varchar("status", { length: 32 }).notNull(),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const template_generation_log = pgTable("template_generation_log", {
   id: serial("id").primaryKey(),
   templateId: integer("template_id").references(() => templates.id, {
@@ -159,6 +176,8 @@ export type User = InferSelectModel<typeof users>;
 export type ApiKey = InferSelectModel<typeof api_keys>;
 export type TranslationLog = InferSelectModel<typeof translation_log>;
 export type NewTranslationLog = InferInsertModel<typeof translation_log>;
+export type PdfUpload = InferSelectModel<typeof pdf_uploads>;
+export type NewPdfUpload = InferInsertModel<typeof pdf_uploads>;
 export type TemplateGenerationLog = InferSelectModel<
   typeof template_generation_log
 >;

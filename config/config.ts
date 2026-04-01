@@ -32,6 +32,15 @@ interface Config {
   smtpUser: string;
   smtpPass: string;
   mailFrom: string;
+  bucket: {
+    bucketName: string;
+    endpoint: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    region: string;
+    forcePathStyle: boolean;
+    enabled: boolean;
+  };
 }
 
 const config: Config = {
@@ -54,6 +63,22 @@ const config: Config = {
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
   mailFrom: process.env.MAIL_FROM || process.env.SMTP_USER || "",
+  bucket: {
+    bucketName: process.env.BUCKET || "",
+    endpoint: process.env.ENDPOINT || "",
+    accessKeyId: process.env.ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.SECRET_ACCESS_KEY || "",
+    region: process.env.REGION || "",
+    forcePathStyle:
+      String(process.env.BUCKET_FORCE_PATH_STYLE || "false") === "true",
+    enabled: Boolean(
+      process.env.BUCKET &&
+        process.env.ENDPOINT &&
+        process.env.ACCESS_KEY_ID &&
+        process.env.SECRET_ACCESS_KEY &&
+        process.env.REGION,
+    ),
+  },
 };
 
 export default config;

@@ -64,3 +64,18 @@ export interface LogTemplateGenerationParams {
   costUsd: number | undefined;
   latencyMs: number;
 }
+
+export type PdfUploadStatus = "uploaded" | "failed" | "skipped";
+
+export interface LogPdfUploadParams {
+  userId?: number | null;
+  flow: string;
+  fieldName: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  bucketName?: string | null;
+  objectKey?: string | null;
+  status: PdfUploadStatus;
+  errorMessage?: string | null;
+}

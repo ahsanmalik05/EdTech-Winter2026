@@ -354,7 +354,8 @@
       Reads PDF buffer into Uint8Array, parses and returns raw text string.
     </extraction>
     <cleanup>
-      Files are always deleted in a finally block after processing,
+      Uploaded PDFs are first archived to a private Railway Bucket on a best-effort basis.
+      Local temp files in uploads/ are always deleted in a finally block after processing,
       regardless of translation success or failure.
     </cleanup>
   </fileHandling>
@@ -424,6 +425,12 @@
     <variable name="OPENAI_API_KEY" required="true" description="OpenAI API key for fallback + templates" />
     <variable name="JWT_SECRET" required="true" description="Secret for signing JWT tokens" />
     <variable name="FRONTEND_URL" default="http://localhost:5173" description="CORS allowed origin" />
+    <variable name="BUCKET" required="false" description="Railway bucket name for S3 API operations" />
+    <variable name="ENDPOINT" required="false" description="Railway bucket S3 endpoint" />
+    <variable name="ACCESS_KEY_ID" required="false" description="Railway bucket access key id" />
+    <variable name="SECRET_ACCESS_KEY" required="false" description="Railway bucket secret access key" />
+    <variable name="REGION" required="false" description="Railway bucket region value" />
+    <variable name="BUCKET_FORCE_PATH_STYLE" default="false" description="Set true only for older Railway buckets that require path-style URLs" />
   </environment>
 
 </architecture>

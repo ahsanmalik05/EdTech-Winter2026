@@ -1,5 +1,4 @@
 import fs from "fs";
-import fsp from "fs/promises";
 import { PDFParse } from 'pdf-parse';
 
 export type TranslatedBlock = { tokenCount?: number | null | undefined; notes?: string | undefined } & DocumentBlock ;
@@ -196,8 +195,10 @@ export function blocksToText(blocks: DocumentBlock[]): string {
   return lines.join('\n');
 }
 
-export async function deleteFile(filePath: string): Promise<void> {
+export async function deleteLocalFile(filePath: string): Promise<void> {
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }
 }
+
+export const deleteFile = deleteLocalFile;

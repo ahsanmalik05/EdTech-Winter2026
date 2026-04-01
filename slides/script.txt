@@ -83,7 +83,7 @@ Slide 9 - Ethical Considerations
 
 Finally, let's talk about ethics - because any AI-powered educational tool needs to address these carefully.
 
-Data privacy - users submit text, including PDFs that may contain sensitive information. Our mitigations: all API access requires authentication via API keys or JWT tokens, we practice minimal data storage, and we avoid unnecessary logging of user content. Uploaded PDFs are deleted from disk immediately after processing.
+Data privacy - users submit text, including PDFs that may contain sensitive information. Our mitigations: all API access requires authentication via API keys or JWT tokens, we practice minimal data storage, and we avoid unnecessary logging of user content. Uploaded PDFs are archived to a private Railway Bucket, and the local temp copies are deleted after processing.
 
 Bias in AI translations - LLMs can introduce cultural or linguistic bias, especially when translating educational content across different cultural contexts. Our mitigation: the glossary system constrains translations with explicit domain-specific definitions, and for sensitive content, we support human review through back-translation and confidence scoring.
 

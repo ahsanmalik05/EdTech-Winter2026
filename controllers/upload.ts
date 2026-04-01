@@ -1,17 +1,20 @@
 import type { Request, Response } from "express";
 import {
-  deleteFile,
+  deleteLocalFile,
   extractStructuredTextFromPdf,
   blocksToText,
   type DocumentBlock,
   type TranslatedBlock,
 } from "../services/pdf.js";
 import { translateContent } from "../services/cohere.js";
-import { extractTextFromPdf } from "../services/pdf.js";
 import { translateContentStream } from "../services/cohere.js";
 import { validateTranslation } from "../services/validate.js";
 import { logTranslation } from "../services/translation_log.js";
 import { logTranslationValidation } from "../services/translation_validation_log.js";
+import {
+  archiveUploadedPdf,
+  getRequestUserId,
+} from "../services/pdf_upload.js";
 
 const DEFAULT_MODEL = "command-a-translate-08-2025";
 /**
@@ -81,8 +84,14 @@ export const uploadPdfFile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "No PDF file uploaded" });
     }
 
+    await archiveUploadedPdf({
+      file: req.file,
+      flow: "pdf",
+      userId: getRequestUserId(req),
+    });
+
     const targetLanguage = (req.body.language as string) || "French";
-     const blocks = await extractStructuredTextFromPdf(filePath);
+    const blocks = await extractStructuredTextFromPdf(filePath);
     const extractedText = blocksToText(blocks);
 
     if (!extractedText.trim()) {
@@ -151,7 +160,7 @@ export const uploadPdfFile = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Failed to process PDF" });
   } finally {
     if (filePath) {
-      await deleteFile(filePath);
+      await deleteLocalFile(filePath);
     }
   }
 };
@@ -172,6 +181,12 @@ export const uploadPdfFileStream = async (req: Request, res: Response) => {
       sendEvent("error", { error: "No PDF file uploaded" });
       return res.end();
     }
+
+    await archiveUploadedPdf({
+      file: req.file,
+      flow: "pdf_stream",
+      userId: getRequestUserId(req),
+    });
 
     const targetLanguage = (req.body.language as string) || "French";
 
@@ -242,7 +257,7 @@ export const uploadPdfFileStream = async (req: Request, res: Response) => {
     res.end();
   } finally {
     if (filePath) {
-      await deleteFile(filePath);
+      await deleteLocalFile(filePath);
     }
   }
 };

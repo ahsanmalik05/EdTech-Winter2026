@@ -6,7 +6,11 @@ import {
 } from "../services/translation_log.js";
 
 const DEFAULT_MODEL = "command-a-translate-08-2025";
-import { extractTextFromPdf, deleteFile } from "../services/pdf.js";
+import { extractTextFromPdf, deleteLocalFile } from "../services/pdf.js";
+import {
+  archiveUploadedPdf,
+  getRequestUserId,
+} from "../services/pdf_upload.js";
 
 export const batchTranslate = async (req: Request, res: Response) => {
   const files = req.files as Express.Multer.File[] | undefined;
@@ -34,6 +38,16 @@ export const batchTranslate = async (req: Request, res: Response) => {
         .json({ error: "gradeLevel must be a string if provided" });
       return;
     }
+
+    await Promise.all(
+      files.map((file) =>
+        archiveUploadedPdf({
+          file,
+          flow: "batch",
+          userId: getRequestUserId(req),
+        }),
+      ),
+    );
 
     const start = Date.now();
     const items: { id: string; text: string }[] = [];
@@ -85,7 +99,7 @@ export const batchTranslate = async (req: Request, res: Response) => {
   } finally {
     if (files) {
       for (const file of files) {
-        await deleteFile(file.path);
+        await deleteLocalFile(file.path);
       }
     }
   }
@@ -125,6 +139,16 @@ export const batchTranslateStream = async (req: Request, res: Response) => {
       sendEvent("error", { error: "gradeLevel must be a string if provided" });
       return res.end();
     }
+
+    await Promise.all(
+      files.map((file) =>
+        archiveUploadedPdf({
+          file,
+          flow: "batch_stream",
+          userId: getRequestUserId(req),
+        }),
+      ),
+    );
 
     sendEvent("status", { total: files.length });
 
@@ -175,7 +199,7 @@ export const batchTranslateStream = async (req: Request, res: Response) => {
   } finally {
     if (files) {
       for (const file of files) {
-        await deleteFile(file.path);
+        await deleteLocalFile(file.path);
       }
     }
   }
