@@ -1,0 +1,198 @@
+{
+  "id": "0004_validation_tables",
+  "prevId": "0003_cost_tracking",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "template_validations": {
+      "name": "template_validations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "template_id": {
+          "name": "template_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generation_log_id": {
+          "name": "generation_log_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_valid": {
+          "name": "is_valid",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issues": {
+          "name": "issues",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "model": {
+          "name": "model",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "validated_at": {
+          "name": "validated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "template_validations_template_id_templates_id_fk": {
+          "name": "template_validations_template_id_templates_id_fk",
+          "tableFrom": "template_validations",
+          "tableTo": "templates",
+          "columnsFrom": ["template_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "template_validations_generation_log_id_template_generation_log_id_fk": {
+          "name": "template_validations_generation_log_id_template_generation_log_id_fk",
+          "tableFrom": "template_validations",
+          "tableTo": "template_generation_log",
+          "columnsFrom": ["generation_log_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "translation_validations": {
+      "name": "translation_validations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "translation_log_id": {
+          "name": "translation_log_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "back_translated_text": {
+          "name": "back_translated_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "similarity_score": {
+          "name": "similarity_score",
+          "type": "numeric(4, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "similarity_reasoning": {
+          "name": "similarity_reasoning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "section_count_match": {
+          "name": "section_count_match",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "original_section_count": {
+          "name": "original_section_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "translated_section_count": {
+          "name": "translated_section_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "headers_intact": {
+          "name": "headers_intact",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "overall_confidence": {
+          "name": "overall_confidence",
+          "type": "numeric(4, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "translator_notes": {
+          "name": "translator_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "issues": {
+          "name": "issues",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "validated_at": {
+          "name": "validated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "translation_validations_translation_log_id_translation_log_id_fk": {
+          "name": "translation_validations_translation_log_id_translation_log_id_fk",
+          "tableFrom": "translation_validations",
+          "tableTo": "translation_log",
+          "columnsFrom": ["translation_log_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

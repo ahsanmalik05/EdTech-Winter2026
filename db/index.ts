@@ -7,7 +7,6 @@ dotenv.config();
 
 const connectionString = process.env.DATABASE_URL!;
 
-// For Supabase pooler connection
 const client = postgres(connectionString, { prepare: false });
 
 export const db = drizzle(client, { schema });

@@ -1,0 +1,569 @@
+[
+  {
+    "term": "CSA",
+    "meaning": "Cognitive Structure Analysis — an assessment methodology that evaluates a student's underlying knowledge structure and concepts rather than just looking at whether students can give correct answers to test questions. CSA identifies the source of errors so they can be remediated.",
+    "category": "acronym",
+    "usage_context": "Educational assessment framework developed by John Leddo. CSA-based assessments correlated 0.966 with problem-solving performance in Algebra 1, 0.63 in scientific method, and 0.80 in precalculus. This is not a universally standardized acronym — translate or adapt to the target language's conventions.",
+    "do_not_translate": false
+  },
+  {
+    "term": "INKS",
+    "meaning": "Integrated Knowledge Structure — a framework combining four knowledge representation types: semantic nets (facts), production rules (procedures), scripts (strategies), and mental models (rationales). Developed by John Leddo.",
+    "category": "acronym",
+    "usage_context": "Knowledge representation framework underlying the CSA assessment methodology. Suggests expert knowledge is organized around scripts and principles that allow people to construct explanations and make predictions. This is not a universally standardized acronym — translate or adapt to the target language's conventions.",
+    "do_not_translate": false
+  },
+  {
+    "term": "SADMEP",
+    "meaning": "Reverse order of operations for solving equations: Subtraction, Addition, Division, Multiplication, Exponents, Parentheses. The reverse of PEMDAS. In regions using BODMAS/BIDMAS/BEDMAS, create the equivalent reversed mnemonic in the target language.",
+    "category": "acronym",
+    "usage_context": "Math problem-solving strategy used when solving equations — you undo operations in the opposite order of standard order of operations. Not universally standardized — PEMDAS is US-specific. Other regions use BODMAS (UK/Australia), BIDMAS (UK), BEDMAS (Canada). Translate to the appropriate local equivalent and reverse it.",
+    "do_not_translate": false
+  },
+  {
+    "term": "PEMDAS",
+    "meaning": "Standard order of operations in mathematics: Parentheses, Exponents, Multiplication, Division, Addition, Subtraction. This is the US mnemonic — other regions use BODMAS (UK/Australia), BIDMAS (UK), BEDMAS (Canada), or other local equivalents.",
+    "category": "acronym",
+    "usage_context": "Mathematical convention for the order in which operations are performed. Not universally standardized — use the target language and region's established mnemonic for order of operations.",
+    "do_not_translate": false
+  },
+  {
+    "term": "MCAT",
+    "meaning": "Medical College Admission Test — a standardized exam for medical school admissions in the United States. Other countries have their own medical admission exams (e.g., UCAT/BMAT in the UK, GAMSAT in Australia, NEET in India).",
+    "category": "acronym",
+    "usage_context": "US-specific standardized test. When translating for other regions, reference the equivalent local medical admissions exam if contextually appropriate, or explain what MCAT is.",
+    "do_not_translate": false
+  },
+  {
+    "term": "Cognitive Structure Analysis",
+    "meaning": "An assessment methodology that evaluates the underlying knowledge concepts a student possesses, identifying the source of errors for targeted remediation. Rooted in cognitive psychology research and the INKS framework. Unlike traditional testing, it assesses what students know, not just how they perform.",
+    "category": "framework",
+    "usage_context": "The core assessment framework discussed across all research papers. Used both by teachers to assess students and by students to self-assess their own knowledge.",
+    "do_not_translate": false
+  },
+  {
+    "term": "Integrated Knowledge Structure",
+    "meaning": "A framework integrating four types of knowledge representation from cognitive psychology: semantic nets (factual knowledge), production rules (procedural knowledge), scripts (strategic knowledge), and mental models (rationale/principle knowledge). Developed by John Leddo (Leddo et al., 1990).",
+    "category": "framework",
+    "usage_context": "The theoretical foundation of CSA. Proposes that expert knowledge is organized around these four knowledge types, each used differently in problem solving.",
+    "do_not_translate": false
+  },
+  {
+    "term": "classical test theory",
+    "meaning": "Traditional assessment theory assuming the total number of correctly answered test items indicates the student's level of knowledge. A major pillar of conventional educational assessment methodology.",
+    "category": "framework",
+    "usage_context": "The conventional approach to testing that CSA challenges. Classical test theory equates correct answers with knowledge, which can be misleading when students guess correctly or memorize without understanding.",
+    "do_not_translate": false
+  },
+  {
+    "term": "self-assessment",
+    "meaning": "A process where students evaluate their own knowledge after learning material, identifying what they know and what they don't know, organized by knowledge types (facts, strategies, procedures, rationales). Distinct from self-explanation.",
+    "category": "methodology",
+    "usage_context": "The central metacognitive strategy in the research. Students are taught to self-assess using the CSA framework, then remediate identified gaps. Studies show 15-28 percentage point improvements over control groups.",
+    "do_not_translate": false
+  },
+  {
+    "term": "self-explanation",
+    "meaning": "Explanations that people generate about material they are learning as they study it. Distinct from self-assessment — self-explanation occurs during learning, while self-assessment evaluates knowledge after learning.",
+    "category": "methodology",
+    "usage_context": "Referenced to distinguish it from self-assessment. Self-explanation (Chi et al., 1989) helps learn material better but does not involve evaluating one's own knowledge gaps.",
+    "do_not_translate": false
+  },
+  {
+    "term": "remediation",
+    "meaning": "The process of addressing identified knowledge deficiencies through targeted instruction, review, or study. Follows after assessment identifies what knowledge is missing or incorrect.",
+    "category": "methodology",
+    "usage_context": "The second step after self-assessment. Students identify gaps via self-assessment, then remediate by revisiting material specifically to fill those gaps. The combination produces significant performance improvements.",
+    "do_not_translate": false
+  },
+  {
+    "term": "self-directed learning",
+    "meaning": "A learning approach where students take initiative and responsibility for their own learning process, often using online resources like YouTube videos or instructional documents.",
+    "category": "methodology",
+    "usage_context": "Growing trend enabled by the Internet. CSA self-assessment provides a formal framework for people engaged in self-directed learning to verify their comprehension.",
+    "do_not_translate": false
+  },
+  {
+    "term": "constructive response test",
+    "meaning": "An assessment requiring students to construct their own answers rather than select from pre-existing answer choices. Encourages logical reasoning and provides a more valid measure of actual knowledge than multiple choice.",
+    "category": "methodology",
+    "usage_context": "Contrasted with multiple choice tests. Students are more likely to reason logically on constructive tests, making them more accurate measures of understanding.",
+    "do_not_translate": false
+  },
+  {
+    "term": "problem-solution text structure",
+    "meaning": "A text organization pattern that describes a problem being faced and the strategy or solution to that problem. Common structure for describing historical events and situations.",
+    "category": "methodology",
+    "usage_context": "Used in the history self-assessment script to frame how historical events are analyzed — identifying the problem, the strategy/solution, specific events, and rationales.",
+    "do_not_translate": false
+  },
+  {
+    "term": "semantic nets",
+    "meaning": "A knowledge representation that organizes factual information about objects, their properties, and their relationships to each other. Based on Quillian (1966).",
+    "category": "cognitive_psychology",
+    "usage_context": "One of the four INKS knowledge types. Represents the 'facts' category — the 'what' knowledge about a domain.",
+    "do_not_translate": false
+  },
+  {
+    "term": "production rules",
+    "meaning": "A knowledge representation that organizes concrete procedures as condition-action pairs (if X then do Y). Based on Newell and Simon (1972).",
+    "category": "cognitive_psychology",
+    "usage_context": "One of the four INKS knowledge types. Represents specific step-by-step procedures — the concrete 'how' knowledge.",
+    "do_not_translate": false
+  },
+  {
+    "term": "scripts",
+    "meaning": "General goal-based critical thinking strategies that organize knowledge around typical situations and how to handle them. Based on Schank and Abelson (1977).",
+    "category": "cognitive_psychology",
+    "usage_context": "One of the four INKS knowledge types. Represents general strategies — the abstract 'how' knowledge. Not to be confused with 'self-assessment scripts' which are instructional templates.",
+    "do_not_translate": false
+  },
+  {
+    "term": "mental models",
+    "meaning": "Knowledge representations that explain the principles behind why concepts work the way they do. Based on de Kleer and Brown (1981). Allow people to understand underlying mechanisms.",
+    "category": "cognitive_psychology",
+    "usage_context": "One of the four INKS knowledge types. Represents rationales — the 'why' knowledge. Understanding mental models enables predictions and explanations.",
+    "do_not_translate": false
+  },
+  {
+    "term": "knowledge gaps",
+    "meaning": "Deficiencies or missing pieces in a student's understanding of a subject. Can exist even when students answer questions correctly (through guessing or memorization).",
+    "category": "educational_term",
+    "usage_context": "Central concept in the self-assessment research. CSA identifies knowledge gaps that traditional testing misses. Students learn to self-identify gaps and remediate them.",
+    "do_not_translate": false
+  },
+  {
+    "term": "knowledge deficiencies",
+    "meaning": "Areas where a student's understanding is incomplete, incorrect, or missing entirely. Can include missing facts, flawed strategies, incomplete procedures, or absent rationales.",
+    "category": "educational_term",
+    "usage_context": "Used interchangeably with 'knowledge gaps' in the research papers. Self-assessment helps students identify and remediate their own knowledge deficiencies.",
+    "do_not_translate": false
+  },
+  {
+    "term": "facts",
+    "meaning": "In the INKS/CSA framework: concepts that describe objects or elements — the 'what' knowledge. In math, these include definitions of terms like variables and coefficients. In reading, these include characters and setting. In history, these include people, dates, and locations.",
+    "category": "educational_term",
+    "usage_context": "One of the four knowledge types students self-assess. Students identify what facts they know and which ones they are missing or unsure about.",
+    "do_not_translate": false
+  },
+  {
+    "term": "strategies",
+    "meaning": "In the INKS/CSA framework: general processes used to solve problems or understand situations — the abstract 'how' knowledge. In math, this could be reverse order of operations. In reading, this is the general plot. In history, this is the problem being faced and the solution approach.",
+    "category": "educational_term",
+    "usage_context": "One of the four knowledge types students self-assess. Strategies represent the high-level approach, distinct from specific procedural steps.",
+    "do_not_translate": false
+  },
+  {
+    "term": "procedures",
+    "meaning": "In the INKS/CSA framework: specific steps used within a strategy — the concrete 'how' knowledge. In math, these are operations like additive inverse. In reading, these are specific events in the story. In history, these are specific events that occurred.",
+    "category": "educational_term",
+    "usage_context": "One of the four knowledge types students self-assess. Procedures are the detailed, concrete steps within a broader strategy.",
+    "do_not_translate": false
+  },
+  {
+    "term": "rationales",
+    "meaning": "In the INKS/CSA framework: reasons why strategies or procedures work the way they do — the 'why' knowledge. In math, these are properties like the subtraction property of equality. In reading, these include author's purpose. In history, these explain why events happened.",
+    "category": "educational_term",
+    "usage_context": "One of the four knowledge types students self-assess. Understanding rationales indicates deep comprehension beyond surface-level memorization.",
+    "do_not_translate": false
+  },
+  {
+    "term": "metacognition",
+    "meaning": "Awareness and understanding of one's own thought processes — thinking about thinking. Includes the ability to monitor and evaluate one's own knowledge and learning.",
+    "category": "cognitive_psychology",
+    "usage_context": "Self-assessment is a metacognitive skill. Students must think about what they know and don't know, which requires metacognitive awareness.",
+    "do_not_translate": false
+  },
+  {
+    "term": "post-test",
+    "meaning": "An assessment given after instruction or intervention to measure learning outcomes. Used to compare performance between control and experimental groups.",
+    "category": "educational_term",
+    "usage_context": "All studies in the research used post-tests to measure the effectiveness of self-assessment plus remediation vs. simple review.",
+    "do_not_translate": false
+  },
+  {
+    "term": "control group",
+    "meaning": "Participants in a study who receive standard instruction without the experimental intervention. Serves as the baseline for comparison.",
+    "category": "research",
+    "usage_context": "In the self-assessment studies, control groups reviewed material without structured self-assessment. They consistently scored lower than experimental groups.",
+    "do_not_translate": false
+  },
+  {
+    "term": "experimental group",
+    "meaning": "Participants in a study who receive the intervention being tested — in this case, CSA-based self-assessment training plus guided remediation.",
+    "category": "research",
+    "usage_context": "Experimental groups were taught to self-assess using CSA scripts and then remediate identified gaps. They consistently outperformed control groups by 15-28 percentage points.",
+    "do_not_translate": false
+  },
+  {
+    "term": "multiple choice test",
+    "meaning": "An assessment format requiring students to select the correct answer from several distractors. Widely used in standardized testing due to ease of grading, but allows score inflation through guessing.",
+    "category": "educational_term",
+    "usage_context": "Discussed as a less reliable measure of knowledge than constructive response tests. Students can score higher through guessing rather than understanding.",
+    "do_not_translate": false
+  },
+  {
+    "term": "distractors",
+    "meaning": "Incorrect answer choices in a multiple choice test designed to distract students from the correct answer.",
+    "category": "educational_term",
+    "usage_context": "Part of multiple choice test design. Students must select correct answers from among distractors.",
+    "do_not_translate": false
+  },
+  {
+    "term": "letter grade",
+    "meaning": "Traditional academic grading scale (A, B, C, D, F) used to report student performance. Typically A=90-100%, B=80-89%, C=70-79%, D=60-69%, F=below 60%.",
+    "category": "educational_term",
+    "usage_context": "Used throughout the research to contextualize improvement — e.g., self-assessment led to 1.5 to 2.5 letter grade improvements.",
+    "do_not_translate": false
+  },
+  {
+    "term": "grade level",
+    "meaning": "Standard measure of educational progress by year (e.g., 6th grade, 10th grade). Students performing 'below grade level' are not meeting expectations for their year.",
+    "category": "educational_term",
+    "usage_context": "Referenced in discussing US education challenges — the majority of students historically perform below grade level in core academic subjects.",
+    "do_not_translate": false
+  },
+  {
+    "term": "gifted and talented",
+    "meaning": "Students who demonstrate exceptional abilities, potential, or performance in academic, creative, or other areas compared to their peers.",
+    "category": "educational_term",
+    "usage_context": "A special student population studied in Leddo's earlier research on self-directed vs. teacher-led learning.",
+    "do_not_translate": false
+  },
+  {
+    "term": "formative assessment",
+    "meaning": "Assessment that provides continuous, ongoing feedback during the learning process to improve teaching and learning. Designed to inform and adjust instruction.",
+    "category": "educational_term",
+    "usage_context": "Self-assessment is a form of formative assessment. It emphasizes continuous feedback and adjustment to improve learning outcomes.",
+    "do_not_translate": false
+  },
+  {
+    "term": "summative assessment",
+    "meaning": "Assessment that measures learning outcomes at the end of an instructional period. Evaluates what students have learned after instruction is complete.",
+    "category": "educational_term",
+    "usage_context": "Post-tests in the research studies are summative assessments. Contrasted with formative assessment approaches like self-assessment.",
+    "do_not_translate": false
+  },
+  {
+    "term": "self-efficacy",
+    "meaning": "A person's confidence in their ability to complete tasks, achieve goals, and succeed academically. Belief in one's own competence.",
+    "category": "educational_term",
+    "usage_context": "Research found that self-assessment builds self-efficacy — students gained greater confidence and sense of control over their learning process.",
+    "do_not_translate": false
+  },
+  {
+    "term": "differentiated instruction",
+    "meaning": "Tailoring teaching methods, content, and assessment to accommodate individual student needs, abilities, and learning styles.",
+    "category": "educational_term",
+    "usage_context": "Self-assessment enables differentiation because each student identifies and addresses their own unique learning needs, rather than receiving one-size-fits-all instruction.",
+    "do_not_translate": false
+  },
+  {
+    "term": "scaffolding",
+    "meaning": "Temporary instructional support structures that help students learn new concepts. Gradually removed as students gain competence.",
+    "category": "educational_term",
+    "usage_context": "The self-assessment scripts serve as scaffolding — they provide a structured template that guides students through the self-assessment process.",
+    "do_not_translate": false
+  },
+  {
+    "term": "prior knowledge",
+    "meaning": "What students already know before receiving new instruction. Foundational knowledge that new learning builds upon.",
+    "category": "educational_term",
+    "usage_context": "Important for effective learning. Control group participants often relied on prior knowledge and struggled to pinpoint specific knowledge gaps.",
+    "do_not_translate": false
+  },
+  {
+    "term": "conceptual understanding",
+    "meaning": "Deep comprehension of underlying principles and relationships, beyond surface-level memorization of facts or procedures.",
+    "category": "educational_term",
+    "usage_context": "The goal of CSA-based assessment — evaluating whether students truly understand concepts, not just whether they can produce correct answers.",
+    "do_not_translate": false
+  },
+  {
+    "term": "procedural knowledge",
+    "meaning": "Knowledge of how to perform specific tasks, steps, or operations. The 'how-to' knowledge that enables execution of procedures.",
+    "category": "educational_term",
+    "usage_context": "One type of knowledge assessed by CSA. Corresponds to 'production rules' in the INKS framework and 'procedures' in the four knowledge types.",
+    "do_not_translate": false
+  },
+  {
+    "term": "declarative knowledge",
+    "meaning": "Knowledge of facts, concepts, and information — knowing 'what' something is rather than 'how' to do something.",
+    "category": "educational_term",
+    "usage_context": "Corresponds to 'semantic nets' in the INKS framework and 'facts' in the four knowledge types.",
+    "do_not_translate": false
+  },
+  {
+    "term": "transfer of learning",
+    "meaning": "The ability to apply knowledge or skills learned in one context to new, different situations or problems.",
+    "category": "educational_term",
+    "usage_context": "A goal of deep understanding through CSA. Students who understand rationales can transfer knowledge more effectively than those who only memorize procedures.",
+    "do_not_translate": false
+  },
+  {
+    "term": "reverse order of operations",
+    "meaning": "A strategy for solving equations by undoing operations in the opposite order from PEMDAS. Instead of Parentheses-Exponents-Multiplication-Division-Addition-Subtraction, you do Subtraction-Addition-Division-Multiplication-Exponents-Parentheses (SADMEP).",
+    "category": "math",
+    "usage_context": "The strategy knowledge for solving two-step equations. Used as the example in the math self-assessment script.",
+    "do_not_translate": false
+  },
+  {
+    "term": "additive inverse",
+    "meaning": "A procedure for solving equations where you take the number with the opposite sign as the constant and add it to both sides of the equation to isolate the variable.",
+    "category": "math",
+    "usage_context": "One of the key procedures in the math self-assessment. Used when isolating the variable term in equations like 2x + 3 = 15 (subtract 3 from both sides).",
+    "do_not_translate": false
+  },
+  {
+    "term": "multiplicative inverse",
+    "meaning": "A procedure for solving equations where you take the reciprocal of the coefficient and multiply both sides of the equation by it to solve for the variable.",
+    "category": "math",
+    "usage_context": "One of the key procedures in the math self-assessment. Used after the additive inverse step to isolate the variable completely.",
+    "do_not_translate": false
+  },
+  {
+    "term": "subtraction property of equality",
+    "meaning": "A mathematical principle stating that subtracting the same number from both sides of an equation preserves the equality. The rationale behind the additive inverse procedure.",
+    "category": "math",
+    "usage_context": "One of the rationale knowledge types in the math self-assessment. Explains why the additive inverse procedure works.",
+    "do_not_translate": false
+  },
+  {
+    "term": "division property of equality",
+    "meaning": "A mathematical principle stating that dividing both sides of an equation by the same non-zero number preserves the equality. The rationale behind the multiplicative inverse procedure.",
+    "category": "math",
+    "usage_context": "One of the rationale knowledge types in the math self-assessment. Explains why the multiplicative inverse procedure works.",
+    "do_not_translate": false
+  },
+  {
+    "term": "two-step equation",
+    "meaning": "An algebraic equation requiring two operations to solve, typically in the form ax + b = c. Example: 2x + 3 = 15.",
+    "category": "math",
+    "usage_context": "The primary example problem type used in the math self-assessment script to illustrate the four knowledge types.",
+    "do_not_translate": false
+  },
+  {
+    "term": "variable",
+    "meaning": "An unknown quantity in mathematics, usually represented by a letter such as x, y, or z.",
+    "category": "math",
+    "usage_context": "One of the 'facts' knowledge types in the math self-assessment. A basic algebraic concept students need to define.",
+    "do_not_translate": false
+  },
+  {
+    "term": "constant",
+    "meaning": "A specific, fixed number in a mathematical expression or equation (as opposed to a variable).",
+    "category": "math",
+    "usage_context": "One of the 'facts' knowledge types in the math self-assessment. In 2x + 3 = 15, the constants are 3 and 15.",
+    "do_not_translate": false
+  },
+  {
+    "term": "coefficient",
+    "meaning": "A number that multiplies a variable. For example, in 2x, the coefficient is 2.",
+    "category": "math",
+    "usage_context": "One of the 'facts' knowledge types in the math self-assessment. Important for applying multiplicative inverse procedure.",
+    "do_not_translate": false
+  },
+  {
+    "term": "expression",
+    "meaning": "One or more terms combined by mathematical operations like addition, subtraction, multiplication, and division.",
+    "category": "math",
+    "usage_context": "One of the 'facts' knowledge types in the math self-assessment. An equation joins two expressions with an equal sign.",
+    "do_not_translate": false
+  },
+  {
+    "term": "equation",
+    "meaning": "A mathematical statement that two expressions are equal, joined by an equal sign.",
+    "category": "math",
+    "usage_context": "One of the 'facts' knowledge types in the math self-assessment. The central object students learn to solve.",
+    "do_not_translate": false
+  },
+  {
+    "term": "exponent",
+    "meaning": "A number indicating how many times a base number is multiplied by itself. For example, 2³ means 2 × 2 × 2.",
+    "category": "math",
+    "usage_context": "The topic of the middle school math study (Leddo, Clark and Clark, 2025). Also part of the SADMEP/PEMDAS order of operations.",
+    "do_not_translate": false
+  },
+  {
+    "term": "cognate",
+    "meaning": "A word in one language that is similar in form and meaning to a word in another language, due to shared linguistic origins.",
+    "category": "language",
+    "usage_context": "Used in the Spanish learning self-assessment. Spanish contains many cognates with English, which helps learners recognize and understand unfamiliar words.",
+    "do_not_translate": false
+  },
+  {
+    "term": "verb conjugation",
+    "meaning": "Changing the form of a verb to match the subject pronoun, tense, mood, and number. Each language has its own conjugation patterns.",
+    "category": "language",
+    "usage_context": "Core concept in the Spanish self-assessment. Students learn to conjugate -ar, -er, and -ir verbs with different subject pronouns.",
+    "do_not_translate": false
+  },
+  {
+    "term": "subject pronoun",
+    "meaning": "A pronoun that performs the action of the verb — I (yo), you (tú), he/she (él/ella), we (nosotros), they (ellos).",
+    "category": "language",
+    "usage_context": "Each subject pronoun requires a different verb conjugation form in Spanish, unlike English where verb forms change less.",
+    "do_not_translate": false
+  },
+  {
+    "term": "regular verb",
+    "meaning": "A verb that follows standard, predictable conjugation patterns for its verb class (e.g., -ar, -er, -ir verbs in Spanish).",
+    "category": "language",
+    "usage_context": "The Spanish self-assessment focuses on regular verb conjugation patterns before introducing irregular verbs.",
+    "do_not_translate": false
+  },
+  {
+    "term": "infinitive",
+    "meaning": "The base, unconjugated form of a verb. In English: 'to speak,' 'to eat,' 'to live.' In Spanish: hablar, comer, vivir.",
+    "category": "language",
+    "usage_context": "The starting point for conjugation — students remove the infinitive ending (-ar, -er, -ir) and add the appropriate conjugated ending.",
+    "do_not_translate": false
+  },
+  {
+    "term": "statistical significance",
+    "meaning": "A result that is unlikely to have occurred by chance alone. Conventionally indicated by a p-value less than 0.05.",
+    "category": "research",
+    "usage_context": "All studies reported statistically significant improvements from self-assessment plus remediation. p-values ranged from .008 to .04.",
+    "do_not_translate": false
+  },
+  {
+    "term": "p-value",
+    "meaning": "The probability that the observed results occurred by chance alone if there were truly no difference between groups. Lower p-values indicate stronger evidence of a real effect.",
+    "category": "research",
+    "usage_context": "Reported in all studies to confirm statistical significance. Values included p = .008 (chemistry), p < .04 (Spanish), p < .01 (reading), p < .0001 (history).",
+    "do_not_translate": false
+  },
+  {
+    "term": "t-value",
+    "meaning": "A test statistic from a t-test that measures the size of the difference between two group means relative to the variation in the data.",
+    "category": "research",
+    "usage_context": "Used in the studies to compare control vs. experimental group scores. Higher t-values indicate larger differences between groups.",
+    "do_not_translate": false
+  },
+  {
+    "term": "degrees of freedom",
+    "meaning": "The number of independent values in a statistical calculation that are free to vary. Abbreviated as 'df' in statistical reporting.",
+    "category": "research",
+    "usage_context": "Reported alongside t-values in the study results (e.g., df = 16, df = 12, df = 18).",
+    "do_not_translate": false
+  },
+  {
+    "term": "mean score",
+    "meaning": "The average score of a group, calculated by summing all scores and dividing by the number of participants.",
+    "category": "research",
+    "usage_context": "Primary outcome measure in all studies. Mean scores were compared between control and experimental groups.",
+    "do_not_translate": false
+  },
+  {
+    "term": "random assignment",
+    "meaning": "Assigning study participants to experimental or control groups by chance rather than by choice, to reduce bias and ensure groups are comparable.",
+    "category": "research",
+    "usage_context": "All studies used random assignment to divide students into control and experimental conditions.",
+    "do_not_translate": false
+  },
+  {
+    "term": "self-assessment script",
+    "meaning": "A structured instructional template that shows students how to self-assess their own knowledge using the four knowledge types (facts, strategies, procedures, rationales). Includes a worked example in a familiar topic and a reflective review section.",
+    "category": "methodology",
+    "usage_context": "The key intervention material. Different scripts were created for different domains: math (two-step equations), reading (Little Red Riding Hood), history (Declaration of Independence), and Spanish.",
+    "do_not_translate": false
+  },
+  {
+    "term": "electrochemical cells",
+    "meaning": "A chemistry concept involving cells that produce electrical energy from chemical reactions (galvanic cells) or use electrical energy to drive non-spontaneous reactions (electrolytic cells).",
+    "category": "educational_term",
+    "usage_context": "The subject area used in Ravi and Leddo (2024) to test self-assessment effectiveness. Content was taught via a YouTube video aimed at MCAT test-takers.",
+    "do_not_translate": false
+  },
+  {
+    "term": "query-based assessment",
+    "meaning": "An assessment framework that uses targeted questions (queries) to probe specific knowledge components rather than relying solely on problem-solving performance.",
+    "category": "framework",
+    "usage_context": "CSA is described as a query-based assessment framework that incorporates principles from the INKS knowledge representation framework.",
+    "do_not_translate": false
+  },
+  {
+    "term": "knowledge representation",
+    "meaning": "How information and knowledge are organized, stored, and structured in the mind. Different types of knowledge (facts, procedures, strategies, rationales) are represented using different cognitive structures.",
+    "category": "cognitive_psychology",
+    "usage_context": "The INKS framework is a knowledge representation framework integrating four types: semantic nets, production rules, scripts, and mental models.",
+    "do_not_translate": false
+  },
+  {
+    "term": "magnet school",
+    "meaning": "A public school with specialized curricula and programs designed to attract students from across a school district, often focused on STEM, arts, or other areas of excellence.",
+    "category": "educational_term",
+    "usage_context": "Some study participants were from magnet high schools, indicating a population with diverse academic backgrounds and potentially higher motivation.",
+    "do_not_translate": false
+  },
+  {
+    "term": "AP",
+    "meaning": "Advanced Placement — a program of college-level courses and exams offered by the College Board for high school students in the United States. Other countries have equivalent programs (e.g., A-Levels in the UK, IB in international schools, Baccalauréat in France).",
+    "category": "acronym",
+    "usage_context": "US-specific academic program. When translating, use the target region's equivalent advanced secondary-school program if contextually appropriate, or explain what AP means.",
+    "do_not_translate": false
+  },
+  {
+    "term": "subject-verb agreement",
+    "meaning": "A grammatical rule requiring the verb form to match the subject in person and number. In Spanish, this requires different verb endings for each subject pronoun.",
+    "category": "language",
+    "usage_context": "Core rationale in the Spanish self-assessment — understanding why verb conjugation exists (to maintain correct subject-verb agreement).",
+    "do_not_translate": false
+  },
+  {
+    "term": "masculine and feminine nouns",
+    "meaning": "In Spanish and other Romance languages, nouns are assigned a grammatical gender (masculine or feminine) that affects article and adjective agreement.",
+    "category": "language",
+    "usage_context": "Part of the Spanish self-assessment. Students need to understand gender rules for time-of-day greetings (días is masculine, tardes and noches are feminine).",
+    "do_not_translate": false
+  },
+  {
+    "term": "protagonist",
+    "meaning": "The main character in a story, typically the one the reader follows and identifies with. Often faces a central conflict or challenge.",
+    "category": "educational_term",
+    "usage_context": "Used in the reading self-assessment. Little Red Riding Hood is identified as the protagonist in the example self-assessment.",
+    "do_not_translate": false
+  },
+  {
+    "term": "antagonist",
+    "meaning": "The character or force that opposes the protagonist in a story, creating the central conflict.",
+    "category": "educational_term",
+    "usage_context": "Used in the reading self-assessment. The wolf is identified as the antagonist in the Little Red Riding Hood example.",
+    "do_not_translate": false
+  },
+  {
+    "term": "author's purpose",
+    "meaning": "The reason an author wrote a text — to inform, persuade, entertain, or convey a particular message or theme to the reader.",
+    "category": "educational_term",
+    "usage_context": "A type of 'rationale' knowledge in reading comprehension self-assessment. Understanding why the author made specific literary choices.",
+    "do_not_translate": false
+  },
+  {
+    "term": "Bayes' Theorem",
+    "meaning": "A mathematical formula in probability theory that describes the probability of an event based on prior knowledge of conditions related to the event. Used to update probability estimates as new evidence is obtained.",
+    "category": "math",
+    "usage_context": "Subject of Prakash and Leddo (2025b) study. CSA-trained group scored 85.5% vs. 58.5% for control group on Bayes' Theorem post-test.",
+    "do_not_translate": false
+  },
+  {
+    "term": "educational equity",
+    "meaning": "The principle that all students should have access to the resources and opportunities they need to succeed, regardless of their background or circumstances.",
+    "category": "educational_term",
+    "usage_context": "Self-assessment is discussed as a tool for educational equity — it enables differentiation and helps bridge achievement gaps across diverse populations.",
+    "do_not_translate": false
+  },
+  {
+    "term": "achievement gaps",
+    "meaning": "Persistent differences in academic performance between groups of students, often along lines of socioeconomic status, race, or disability status.",
+    "category": "educational_term",
+    "usage_context": "Self-assessment is proposed as a scalable, free intervention that could help bridge achievement gaps by empowering all students to self-assess and remediate.",
+    "do_not_translate": false
+  },
+  {
+    "term": "MyEdMaster",
+    "meaning": "MyEdMaster, LLC — an educational technology company based in Virginia, USA, involved in developing CSA-based assessment tools and conducting research on self-assessment methodologies.",
+    "category": "educational_term",
+    "usage_context": "The organization affiliated with the research papers. All studies were conducted under MyEdMaster, LLC.",
+    "do_not_translate": true
+  }
+]

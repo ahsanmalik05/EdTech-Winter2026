@@ -5,12 +5,17 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:frontend": "cd frontend && npm run build",
+    "build:all": "npm run build:frontend && npm run build",
+    "test": "vitest run",
     "dev": "tsc && node dist/app.js",
+    "start": "node dist/app.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed-glossary": "tsc && node dist/scripts/seed-glossary.js",
+    "db:seed-languages": "tsc && node dist/scripts/seed-languages.js"
   },
   "repository": {
     "type": "git",
@@ -26,10 +31,14 @@
   "homepage": "https://github.com/CSC392-CSC492-Building-AI-ML-systems/EdTech-Winter2026#readme",
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
     "@types/node": "^25.2.0",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/supertest": "^7.2.0",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.9",
     "eslint": "^9.39.2",
@@ -38,16 +47,26 @@
     "nodemon": "^3.1.11",
     "npm": "^11.9.0",
     "prettier": "^3.8.1",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.2"
   },
   "dependencies": {
+    "@ai-sdk/cohere": "^3.0.27",
+    "@ai-sdk/openai": "^3.0.48",
+    "ai": "^6.0.137",
     "bcrypt": "^6.0.0",
     "cohere-ai": "^7.20.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "drizzle-orm": "^0.45.1",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "nodemailer": "^8.0.4",
     "openai": "^6.21.0",
-    "postgres": "^3.4.8"
+    "pdf-parse": "^2.4.5",
+    "postgres": "^3.4.8",
+    "zod": "^4.3.6"
   }
 }
