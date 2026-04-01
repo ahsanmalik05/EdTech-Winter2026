@@ -118,9 +118,27 @@ export const translation_log = pgTable("translation_log", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const template_generation_log = pgTable("template_generation_log", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").references(() => templates.id, {
+    onDelete: "set null",
+  }),
+  userId: integer("user_id").references(() => users.id),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  topic: varchar("topic", { length: 255 }).notNull(),
+  gradeLevel: varchar("grade_level", { length: 100 }).notNull(),
+  model: varchar("model", { length: 255 }).notNull(),
+  success: boolean("success").notNull(),
+  errorMessage: text("error_message"),
+  latencyMs: integer("latency_ms").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type User = InferSelectModel<typeof users>;
 export type ApiKey = InferSelectModel<typeof api_keys>;
 export type TranslationLog = InferSelectModel<typeof translation_log>;
 export type NewTranslationLog = InferInsertModel<typeof translation_log>;
+export type TemplateGenerationLog = InferSelectModel<typeof template_generation_log>;
+export type NewTemplateGenerationLog = InferInsertModel<typeof template_generation_log>;
 export type NewUser = InferInsertModel<typeof users>;
 export type NewApiKey = InferInsertModel<typeof api_keys>;

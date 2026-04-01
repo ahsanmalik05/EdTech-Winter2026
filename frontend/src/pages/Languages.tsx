@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Button, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton } from '@mui/material';
 import { Delete } from '@mui/icons-material';
 import { api } from '../api/api';
 import { toast } from 'react-hot-toast';
+import { useQuery, invalidateQueries } from '../api/useQuery';
 
 interface Language {
   id: number;
@@ -11,23 +12,10 @@ interface Language {
 }
 
 export const Languages: React.FC = () => {
-  const [languages, setLanguages] = useState<Language[]>([]);
+  const { data: languages = [], refetch } = useQuery<Language[]>('/api/languages');
   const [open, setOpen] = useState(false);
   const [newCode, setNewCode] = useState('');
   const [newName, setNewName] = useState('');
-
-  const fetchLanguages = async () => {
-    try {
-      const res = await api.get('/api/languages');
-      setLanguages(res.data);
-    } catch (err) {
-      toast.error('Failed to load languages');
-    }
-  };
-
-  useEffect(() => {
-    fetchLanguages();
-  }, []);
 
   const handleAdd = async () => {
     try {
@@ -36,7 +24,8 @@ export const Languages: React.FC = () => {
       setOpen(false);
       setNewCode('');
       setNewName('');
-      fetchLanguages();
+      invalidateQueries('/api/languages');
+      refetch();
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to add language');
     }
@@ -47,7 +36,8 @@ export const Languages: React.FC = () => {
     try {
       await api.delete(`/api/languages/${id}`);
       toast.success('Language deleted');
-      fetchLanguages();
+      invalidateQueries('/api/languages');
+      refetch();
     } catch (err) {
       toast.error('Failed to delete language');
     }

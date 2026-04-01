@@ -1,5 +1,6 @@
 import fs from "fs";
-import { PDFParse } from "pdf-parse";
+import fsp from "fs/promises";
+import { PDFParse } from 'pdf-parse';
 
 export interface DocumentBlock {
   type: 'heading' | 'paragraph' | 'bullet_list' | 'numbered_list' | 'table_row' | 'blank';

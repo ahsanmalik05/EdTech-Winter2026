@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  METY EdTech Platform — High-Level Technical Architecture
+  CSC 392 / 492 — Winter 2026
+-->
+<architecture name="METY EdTech Platform" version="1.0">
+
+  <overview>
+    <description>
+      METY is an AI-powered educational technology platform that generates
+      Cognitive Structure Analysis (CSA) self-assessment scripts and translates
+      PDF documents across languages using glossary-aware AI translation.
+    </description>
+    <stack>
+      <backend framework="Express.js" runtime="Node.js" language="TypeScript" />
+      <database engine="PostgreSQL" orm="Drizzle ORM" migrations="drizzle-kit" />
+      <ai primary="Cohere (command-a-translate-08-2025)" fallback="OpenAI (gpt-5-nano)" />
+      <frontend framework="React 19" bundler="Vite" styling="Tailwind CSS + MUI" />
+      <video framework="Remotion 4" />
+    </stack>
+  </overview>
+
+  <server entryPoint="app.ts" defaultPort="3000">
+    <startup>
+      <step order="1">Load environment variables via dotenv</step>
+      <step order="2">Initialise Express with CORS and JSON body parser</step>
+      <step order="3">Register apiKeyMiddleware on all routes</step>
+      <step order="4">Mount route modules under /api/*</step>
+      <step order="5">Call loadGlossaryCache() — loads all glossary terms from DB into an in-memory Map and prebuilds a composite regex for fast term matching</step>
+      <step order="6">Listen on configured port</step>
+    </startup>
+    <cors>
+      <allowed origin="config.frontendUrl" />
+      <allowed origin="http://localhost:5173" note="dev" />
+    </cors>
+  </server>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  AUTHENTICATION &amp; AUTHORISATION                         -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <authentication>
+
+    <mechanism name="JWT Bearer Token">
+      <description>
+        Users register or log in with email + password.
+        Passwords are hashed with bcrypt (10 salt rounds).
+        A signed JWT (1 hour expiry) is returned and must be sent
+        as "Authorization: Bearer {token}" on subsequent requests.
+      </description>
+      <flow>
+        <step>Client POST /api/auth/register or /api/auth/login with { email, password }</step>
+        <step>Server hashes/verifies password with bcrypt</step>
+        <step>Server signs JWT with JWT_SECRET, 1h expiry</step>
+        <step>Returns { user: { id, email }, token }</step>
+      </flow>
+    </mechanism>
+
+    <mechanism name="Scoped API Keys">
+      <description>
+        Authenticated users create API keys for programmatic access.
+        Keys follow the format: mety_live_{publicKey}_{rawSecret}.
+        The raw secret is SHA-256 hashed before storage — the full key
+        is shown to the user exactly once on creation.
+      </description>
+      <keyFormat>mety_live_{8-byte-hex-publicKey}_{32-byte-hex-rawSecret}</keyFormat>
+      <scopes>
+        <scope name="read">Read-only access to resources</scope>
+        <scope name="translate">Permission to use translation endpoints</scope>
+        <scope name="write">Full write access</scope>
+      </scopes>
+      <flow>
+        <step>Client sends "X-API-Key: mety_live_..." header</step>
+        <step>apiKeyMiddleware splits key, extracts publicKey segment</step>
+        <step>Queries DB by publicKey</step>
+        <step>SHA-256 hashes the incoming key and compares against stored hash</step>
+        <step>If valid, attaches { id, user_id, label, scopes } to req.apiKey</step>
+      </flow>
+      <exceptions>
+        <skip path="/api/auth/*" reason="Auth routes are public" />
+        <skip path="/api/keys" reason="Key creation requires JWT, not API key" />
+      </exceptions>
+    </mechanism>
+
+  </authentication>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  DATABASE SCHEMA                                            -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <database connectionString="DATABASE_URL" driver="postgres-js" ormConfig="drizzle.config.ts">
+
+    <table name="users">
+      <column name="id" type="serial" primaryKey="true" />
+      <column name="email" type="varchar(255)" unique="true" notNull="true" />
+      <column name="password" type="varchar(255)" notNull="true" note="bcrypt hash" />
+      <column name="createdAt" type="timestamp" default="now()" />
+      <column name="updatedAt" type="timestamp" default="now()" />
+    </table>
+
+    <table name="api_keys">
+      <column name="id" type="serial" primaryKey="true" />
+      <column name="users_id" type="serial" foreignKey="users.id" notNull="true" />
+      <column name="key" type="varchar(255)" unique="true" notNull="true" note="SHA-256 hash" />
+      <column name="publicKey" type="varchar(16)" unique="true" notNull="true" />
+      <column name="label" type="varchar(255)" notNull="true" />
+      <column name="scopes" type="enum['read','write','translate'][]" notNull="true" />
+      <column name="createdAt" type="timestamp" default="now()" />
+      <column name="updatedAt" type="timestamp" default="now()" />
+    </table>
+
+    <table name="languages">
+      <column name="id" type="serial" primaryKey="true" />
+      <column name="name" type="varchar(255)" unique="true" notNull="true" />
+      <column name="code" type="varchar(16)" unique="true" notNull="true" />
+    </table>
+
+    <table name="translation_glossary">
+      <column name="id" type="serial" primaryKey="true" />
+      <column name="term" type="varchar(255)" unique="true" notNull="true" />
+      <column name="meaning" type="text" notNull="true" />
+      <column name="category" type="varchar(50)" notNull="true" />
+      <column name="usageContext" type="text" notNull="true" />
+      <column name="doNotTranslate" type="boolean" default="false" />
+      <column name="createdAt" type="timestamp" default="now()" />
+      <column name="updatedAt" type="timestamp" default="now()" />
+    </table>
+
+    <table name="templates">
+      <column name="id" type="serial" primaryKey="true" />
+      <column name="subject" type="varchar(255)" notNull="true" />
+      <column name="topic" type="varchar(255)" notNull="true" />
+      <column name="gradeLevel" type="varchar(100)" notNull="true" />
+      <column name="version" type="integer" default="1" />
+      <column name="isActive" type="boolean" default="true" />
+      <column name="createdByUserId" type="integer" foreignKey="users.id" nullable="true" />
+      <column name="createdAt" type="timestamp" default="now()" />
+      <column name="updatedAt" type="timestamp" default="now()" />
+    </table>
+
+    <table name="templateSections" onDeleteParent="CASCADE">
+      <column name="id" type="serial" primaryKey="true" />
+      <column name="templateId" type="integer" foreignKey="templates.id" notNull="true" />
+      <column name="sectionType" type="enum['introduction','model_assessment','self_review']" notNull="true" />
+      <column name="content" type="text" notNull="true" />
+      <column name="orderIndex" type="integer" notNull="true" />
+    </table>
+
+    <table name="templateTranslations" onDeleteParent="CASCADE">
+      <column name="id" type="serial" primaryKey="true" />
+      <column name="templateId" type="integer" foreignKey="templates.id" notNull="true" />
+      <column name="languageCode" type="varchar(16)" notNull="true" />
+      <column name="translatedContent" type="jsonb" notNull="true" />
+      <column name="createdAt" type="timestamp" default="now()" />
+    </table>
+
+  </database>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  API SURFACE                                                -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <api basePath="/api">
+
+    <group name="Auth" path="/auth" auth="none">
+      <endpoint method="POST" path="/register" controller="auth.register"
+                description="Create user account, return JWT" />
+      <endpoint method="POST" path="/login" controller="auth.login"
+                description="Authenticate with email+password, return JWT" />
+      <endpoint method="GET"  path="/me" controller="auth.me"
+                description="Get current user from JWT" auth="bearer" />
+    </group>
+
+    <group name="API Keys" path="/keys" auth="bearer">
+      <endpoint method="GET"    path="/"    controller="api_key.getApiKeys"
+                description="List all keys for authenticated user" />
+      <endpoint method="POST"   path="/"    controller="api_key.createApiKey"
+                description="Generate new scoped API key" />
+      <endpoint method="GET"    path="/:id" controller="api_key.getApiKeyData"
+                description="Get key details" />
+      <endpoint method="PATCH"  path="/:id" controller="api_key.updateApiKey"
+                description="Update label or scopes" />
+      <endpoint method="DELETE" path="/:id" controller="api_key.deleteApiKey"
+                description="Revoke key permanently" />
+    </group>
+
+    <group name="Languages" path="/languages" auth="apiKey">
+      <endpoint method="GET"    path="/"           controller="languages.availableLanguages"
+                description="List all supported translation languages" />
+      <endpoint method="GET"    path="/search"     controller="languages.getLanguage"
+                description="Search by ?code= or ?name=" />
+      <endpoint method="POST"   path="/"           controller="languages.addLanguage"
+                description="Add a new language (name + ISO code)" />
+      <endpoint method="DELETE" path="/:id"        controller="languages.deleteLanguage"
+                description="Remove a language" />
+    </group>
+
+    <group name="Templates" path="/templates" auth="apiKey">
+      <endpoint method="POST"   path="/generate" controller="templates.generate"
+                description="AI-generate a CSA self-assessment template" />
+      <endpoint method="GET"    path="/"         controller="templates.list"
+                description="List templates with optional filters" />
+      <endpoint method="GET"    path="/:id"      controller="templates.getById"
+                description="Get template with all sections" />
+      <endpoint method="PATCH"  path="/:id"      controller="templates.update"
+                description="Update metadata or section content" />
+      <endpoint method="DELETE" path="/:id"      controller="templates.deactivate"
+                description="Soft-delete (set isActive=false)" />
+    </group>
+
+    <group name="Translation" path="/translate" auth="apiKey">
+      <endpoint method="POST" path="/batch" controller="translate.batchTranslate"
+                description="Upload multiple PDFs, translate all at once"
+                fileUpload="true" maxFiles="10" maxSize="10MB" />
+      <endpoint method="POST" path="/batch/stream" controller="translate.batchTranslateStream"
+                description="Batch translate with SSE progress events"
+                fileUpload="true" streaming="SSE" />
+      <endpoint method="POST" path="/pdf" controller="upload.uploadPdfFile"
+                description="Single PDF upload and translation"
+                fileUpload="true" />
+      <endpoint method="POST" path="/pdf/stream" controller="upload.uploadPdfFileStream"
+                description="Single PDF with SSE token streaming"
+                fileUpload="true" streaming="SSE" />
+    </group>
+
+  </api>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  CORE PIPELINES                                             -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <pipelines>
+
+    <!-- ── PDF Translation Pipeline ── -->
+    <pipeline name="PDF Translation" trigger="POST /api/translate/batch/stream">
+      <stage order="1" name="Upload">
+        <description>Multer middleware validates PDF MIME type, enforces 10 MB limit, stores files in uploads/ with unique filenames</description>
+      </stage>
+      <stage order="2" name="Text Extraction">
+        <description>pdf-parse reads each PDF buffer and extracts raw text content</description>
+        <sseEvent>extracting — { fileName }</sseEvent>
+      </stage>
+      <stage order="3" name="Glossary Matching">
+        <description>matchTerms(text) runs the prebuilt composite regex against extracted text, returning all domain-specific terms found (CSA, INKS, SADMEP, PEMDAS, etc.)</description>
+      </stage>
+      <stage order="4" name="Prompt Construction">
+        <description>buildGlossaryPrompt(matchedTerms) generates a structured prompt block instructing the AI on exact term translations and do-not-translate rules</description>
+      </stage>
+      <stage order="5" name="AI Translation">
+        <description>Cohere command-a-translate receives the source text + glossary system prompt. Translates with domain-aware terminology handling. Falls back to OpenAI gpt-4o-mini on failure.</description>
+        <sseEvent>translating — { fileName }</sseEvent>
+      </stage>
+      <stage order="6" name="Response">
+        <description>Translated text returned per file. SSE emits item_done for each completed file, then a final complete event.</description>
+        <sseEvent>item_done — { fileName, translatedText }</sseEvent>
+        <sseEvent>complete — { totalFiles, successCount }</sseEvent>
+      </stage>
+      <stage order="7" name="Cleanup">
+        <description>All temporary PDF files deleted from disk in a finally block regardless of success/failure</description>
+      </stage>
+    </pipeline>
+
+    <!-- ── CSA Template Generation Pipeline ── -->
+    <pipeline name="CSA Template Generation" trigger="POST /api/templates/generate">
+      <stage order="1" name="Input Validation">
+        <description>Validate required fields: subject, topic, gradeLevel (all non-empty strings)</description>
+      </stage>
+      <stage order="2" name="Version Resolution">
+        <description>Query existing templates with same subject+topic+gradeLevel combination to determine next version number</description>
+      </stage>
+      <stage order="3" name="AI Generation">
+        <description>
+          OpenAI gpt-5-nano generates a structured CSA self-assessment script using Vercel AI SDK's generateText() with a complex system prompt defining three sections:
+          1. Introduction — explains facts, strategies, procedures, rationales using the subject/topic context
+          2. Model Self-Assessment — student thinking aloud with realistic knowledge gaps
+          3. Self-Review — student reflecting on strengths and weaknesses
+          Output validated against a Zod schema.
+        </description>
+      </stage>
+      <stage order="4" name="Schema Validation">
+        <description>Generated output validated against Zod schema ensuring all three sections are present with non-empty content</description>
+      </stage>
+      <stage order="5" name="Database Storage">
+        <description>Insert template row into templates table, then insert each section into templateSections with ordered indices</description>
+      </stage>
+      <stage order="6" name="Response">
+        <description>Return full template object with id, version, all sections, and timestamps</description>
+      </stage>
+    </pipeline>
+
+  </pipelines>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  GLOSSARY SUBSYSTEM                                         -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <glossary>
+    <description>
+      Domain-specific terminology from cognitive psychology and CSA research.
+      30+ terms seeded from scripts/seed-data/glossary.json via scripts/seed-glossary.ts.
+    </description>
+    <cache strategy="in-memory">
+      <dataStructure>Map&lt;string, GlossaryTerm&gt; keyed by lowercase term</dataStructure>
+      <regex>Composite pattern built at startup, sorted by term length (longest first) to prevent partial matches</regex>
+      <refresh>refreshCache() reloads from DB on demand</refresh>
+    </cache>
+    <integrationPoint>
+      Injected into every translation call as a system prompt.
+      matchTerms(sourceText) → buildGlossaryPrompt(matches) → prepend to AI request.
+    </integrationPoint>
+    <exampleTerms>
+      <term name="CSA" category="acronym" doNotTranslate="false">Cognitive Structure Analysis</term>
+      <term name="INKS" category="acronym" doNotTranslate="false">Integrated Knowledge Structure</term>
+      <term name="SADMEP" category="acronym" doNotTranslate="false">Reverse order of operations</term>
+      <term name="PEMDAS" category="acronym" doNotTranslate="false">Standard order of operations</term>
+      <term name="self-assessment" category="methodology" doNotTranslate="false">Students evaluate own knowledge</term>
+      <term name="metacognition" category="cognitive_psychology" doNotTranslate="false">Thinking about thinking</term>
+    </exampleTerms>
+  </glossary>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  AI SERVICE LAYER                                           -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <aiServices>
+
+    <provider name="Cohere" role="primary" module="services/cohere.ts">
+      <model name="command-a-translate-08-2025" purpose="Translation" />
+      <capabilities>
+        <capability name="chat">Single-message completion</capability>
+        <capability name="chatStream">Token-by-token streaming with callback</capability>
+        <capability name="embed">Text embeddings for semantic similarity</capability>
+        <capability name="translateContent">Full document translation with glossary context</capability>
+        <capability name="translateContentStream">Streaming translation with per-token events</capability>
+        <capability name="translateBatch">Multi-document translation with grade-level context</capability>
+      </capabilities>
+    </provider>
+
+    <provider name="OpenAI" role="fallback + template generation" module="services/cohere.ts + services/templates.ts">
+      <model name="gpt-4o-mini" purpose="Translation fallback" />
+      <model name="gpt-5-nano" purpose="CSA template generation via Vercel AI SDK" />
+      <failoverBehaviour>
+        If Cohere translation fails, the same request is retried against OpenAI gpt-4o-mini
+        using the responses API with identical system prompt and glossary context.
+      </failoverBehaviour>
+    </provider>
+
+  </aiServices>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  FILE HANDLING                                              -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <fileHandling>
+    <upload middleware="Multer" directory="uploads/">
+      <constraint name="mimeType" value="application/pdf" />
+      <constraint name="maxSize" value="10 MB" />
+      <naming pattern="{fieldname}-{timestamp}-{random}.{ext}" />
+    </upload>
+    <extraction library="pdf-parse">
+      Reads PDF buffer into Uint8Array, parses and returns raw text string.
+    </extraction>
+    <cleanup>
+      Files are always deleted in a finally block after processing,
+      regardless of translation success or failure.
+    </cleanup>
+  </fileHandling>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  SSE STREAMING PROTOCOL                                     -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <streaming protocol="Server-Sent Events (SSE)">
+    <headers>
+      <header name="Content-Type" value="text/event-stream" />
+      <header name="Cache-Control" value="no-cache" />
+      <header name="Connection" value="keep-alive" />
+    </headers>
+
+    <events context="Batch Translation Stream">
+      <event name="status" data="{ totalFiles }" when="Start of stream" />
+      <event name="extracting" data="{ fileName }" when="PDF text extraction begins for a file" />
+      <event name="translating" data="{ fileName }" when="AI translation begins for a file" />
+      <event name="item_done" data="{ fileName, translatedText }" when="Single file translation completes" />
+      <event name="item_error" data="{ fileName, error }" when="Single file translation fails" />
+      <event name="complete" data="{ totalFiles, successCount }" when="All files processed" />
+      <event name="error" data="{ error }" when="Fatal pipeline failure" />
+    </events>
+
+    <events context="Single PDF Stream">
+      <event name="extracted" data="{ text }" when="PDF text extraction complete" />
+      <event name="token" data="{ chunk }" when="Each translated token received from AI" />
+      <event name="complete" data="{}" when="Translation finished" />
+    </events>
+  </streaming>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  FRONTEND                                                   -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <frontend entryPoint="frontend/src/main.tsx" bundler="Vite">
+    <pages>
+      <page name="SetupScreen" description="API key input — gate before accessing the app" />
+      <page name="TranslationStudio" description="Batch PDF upload, language selection, SSE progress, translated output preview" />
+      <page name="TemplateGenerator" description="Subject/topic/grade form, AI generation with loading states, expandable template cards" />
+      <page name="Dashboard" description="Overview (MUI dark theme)" />
+      <page name="Login" description="Email/password login form (MUI dark theme)" />
+      <page name="Register" description="Account creation form (MUI dark theme)" />
+      <page name="ApiKeys" description="Table of API keys with create/revoke (MUI dark theme)" />
+      <page name="Languages" description="Language CRUD management (MUI dark theme)" />
+      <page name="Templates" description="Template listing and management (MUI dark theme)" />
+    </pages>
+    <dualTheme>
+      <theme name="Light (METY)" scope="TranslationStudio, TemplateGenerator, SetupScreen"
+             styling="Tailwind CSS" palette="zinc-50 to zinc-900, white background" />
+      <theme name="Dark (MUI)" scope="Dashboard, Login, Register, ApiKeys, Languages, Templates"
+             styling="Material UI" palette="#0F172A bg, #6366F1 primary, #EC4899 secondary, glassmorphism cards" />
+    </dualTheme>
+    <apiClient module="frontend/src/api/api.ts">
+      Axios instance with request interceptors that auto-attach
+      Authorization Bearer token and X-API-Key header from localStorage.
+    </apiClient>
+  </frontend>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!--  ENVIRONMENT CONFIGURATION                                  -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <environment source=".env" loader="dotenv">
+    <variable name="PORT" default="3000" />
+    <variable name="NODE_ENV" default="development" />
+    <variable name="DATABASE_URL" required="true" description="PostgreSQL connection string" />
+    <variable name="COHERE_API_KEY" required="true" description="Cohere AI API key for translations" />
+    <variable name="OPENAI_API_KEY" required="true" description="OpenAI API key for fallback + templates" />
+    <variable name="JWT_SECRET" required="true" description="Secret for signing JWT tokens" />
+    <variable name="FRONTEND_URL" default="http://localhost:5173" description="CORS allowed origin" />
+  </environment>
+
+</architecture>

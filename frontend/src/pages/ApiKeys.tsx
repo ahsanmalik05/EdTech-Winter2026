@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Button, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, IconButton } from '@mui/material';
 import { Delete, ContentCopy } from '@mui/icons-material';
 import { api } from '../api/api';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { useQuery, invalidateQueries } from '../api/useQuery';
 
 interface ApiKey {
   id: number;
@@ -14,23 +15,12 @@ interface ApiKey {
 }
 
 export const ApiKeys: React.FC = () => {
-  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const { data: keys = [], refetch } = useQuery<ApiKey[]>('/api/keys', {
+    select: (raw) => raw.allKeys || raw,
+  });
   const [open, setOpen] = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const { setApiKey, apiKey: activeApiKey } = useAuth();
-
-  const fetchKeys = async () => {
-    try {
-      const res = await api.get('/api/keys');
-      setKeys(res.data.allKeys || res.data);
-    } catch (err: any) {
-      toast.error('Failed to load API keys');
-    }
-  };
-
-  useEffect(() => {
-    fetchKeys();
-  }, []);
 
   const handleCreate = async () => {
     try {
@@ -38,7 +28,8 @@ export const ApiKeys: React.FC = () => {
       toast.success('API Key created successfully!');
       setOpen(false);
       setNewLabel('');
-      fetchKeys();
+      invalidateQueries('/api/keys');
+      refetch();
     } catch (err: any) {
       toast.error('Failed to create API key');
     }
@@ -49,7 +40,8 @@ export const ApiKeys: React.FC = () => {
     try {
       await api.delete(`/api/keys/${id}`);
       toast.success('Key deleted');
-      fetchKeys();
+      invalidateQueries('/api/keys');
+      refetch();
     } catch (err) {
       toast.error('Failed to delete key');
     }

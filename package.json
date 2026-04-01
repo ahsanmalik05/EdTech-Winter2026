@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed-glossary": "tsc && node dist/scripts/seed-glossary.js"
+    "db:seed-glossary": "tsc && node dist/scripts/seed-glossary.js",
+    "db:seed-languages": "tsc && node dist/scripts/seed-languages.js"
   },
   "repository": {
     "type": "git",

@@ -20,7 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [apiKey, setApiKeyState] = useState<string | null>(localStorage.getItem('api_key'));
+  const [apiKey, setApiKeyState] = useState<string | null>(() => localStorage.getItem('api_key'));
 
   useEffect(() => {
     const initAuth = async () => {
@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
-  const setApiKey = (key: keyof typeof localStorage extends string ? string : string) => {
+  const setApiKey = (key: string) => {
     if (!key) {
       localStorage.removeItem('api_key');
       setApiKeyState(null);

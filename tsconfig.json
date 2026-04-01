@@ -41,5 +41,5 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": ["frontend", "node_modules", "dist"]
+  "exclude": ["frontend", "video", "node_modules", "dist"]
 }

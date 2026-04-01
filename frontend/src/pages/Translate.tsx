@@ -1,36 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Paper, TextField, MenuItem, CircularProgress } from '@mui/material';
+import { Box, Button, Typography, Paper, TextField, CircularProgress, Autocomplete } from '@mui/material';
 import { api } from '../api/api';
 import { toast } from 'react-hot-toast';
+import { useQuery } from '../api/useQuery';
 
 export const Translate: React.FC = () => {
-  const [languages, setLanguages] = useState<{code: string; name: string}[]>([]);
-  const [targetLang, setTargetLang] = useState('fr');
+  const { data: languages = [] } = useQuery<{code: string; name: string}[]>(
+    '/api/languages',
+    { select: (raw) => Array.isArray(raw) ? raw : (raw.languages || []) },
+  );
+  const [targetLang, setTargetLang] = useState<{code: string; name: string} | null>(null);
   const [textToTranslate, setTextToTranslate] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
-    const fetchLangs = async () => {
-      try {
-        const res = await api.get('/api/languages');
-        setLanguages(res.data);
-      } catch (err) {
-        toast.error('Could not load languages. Use default.');
-      }
-    };
-    fetchLangs();
-  }, []);
+    if (languages.length > 0 && !targetLang) {
+      const french = languages.find((l) => l.code === 'fr');
+      if (french) setTargetLang(french);
+    }
+  }, [languages, targetLang]);
 
   const handleTranslateText = async () => {
-    if (!textToTranslate) return;
+    if (!textToTranslate || !targetLang) return;
     setLoading(true);
     setTranslatedText('');
     try {
       const res = await api.post('/api/translate/batch', {
         items: [{ id: '1', text: textToTranslate }],
-        targetLanguage: languages.find(l => l.code === targetLang)?.name || 'French'
+        targetLanguage: targetLang.name
       });
       if (res.data.results && res.data.results['1']) {
         setTranslatedText(res.data.results['1'].translatedText || 'No translation returned.');
@@ -43,14 +42,14 @@ export const Translate: React.FC = () => {
   };
 
   const handleTranslateFile = async () => {
-    if (!file) {
-      toast.error('Please select a PDF file first.');
+    if (!file || !targetLang) {
+      toast.error('Please select a PDF file and target language.');
       return;
     }
     setLoading(true);
     const formData = new FormData();
     formData.append('pdf', file);
-    formData.append('targetLanguage', languages.find(l => l.code === targetLang)?.name || 'French');
+    formData.append('targetLanguage', targetLang.name);
 
     try {
       const res = await api.post('/api/translate/pdf', formData, {
@@ -73,22 +72,21 @@ export const Translate: React.FC = () => {
 
       <Paper sx={{ p: 4, mb: 4 }}>
         <Typography variant="h6" mb={2}>Select Target Language</Typography>
-        <TextField
-          select
+        <Autocomplete
           fullWidth
-          label="Language"
+          options={languages}
           value={targetLang}
-          onChange={(e) => setTargetLang(e.target.value)}
-          sx={{ mb: 3 }}
-        >
-          {languages.length > 0 ? languages.map((option) => (
-            <MenuItem key={option.code} value={option.code}>
-              {option.name} ({option.code})
-            </MenuItem>
-          )) : (
-            <MenuItem value="fr">French (fr)</MenuItem>
+          onChange={(_, newValue) => setTargetLang(newValue)}
+          getOptionLabel={(option) => `${option.name} (${option.code})`}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Language"
+              placeholder="Search languages..."
+            />
           )}
-        </TextField>
+          sx={{ mb: 3 }}
+        />
       </Paper>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 4 }}>

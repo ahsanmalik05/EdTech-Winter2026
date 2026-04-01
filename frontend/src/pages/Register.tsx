@@ -24,7 +24,7 @@ export const Register: React.FC = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
       <Paper elevation={3} sx={{ p: 4, width: '100%', maxWidth: 400, textAlign: 'center' }}>
         <Typography variant="h4" mb={1} color="primary.main">EdTech</Typography>
         <Typography variant="body1" mb={3} color="text.secondary">Create a new account</Typography>

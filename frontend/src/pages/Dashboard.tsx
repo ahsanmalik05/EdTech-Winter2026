@@ -1,34 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Box, Typography, Paper, Card, CardContent, CircularProgress } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../api/api';
+import { useQuery } from '../api/useQuery';
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({ keys: 0, languages: 0, templates: 0 });
-  const [loading, setLoading] = useState(true);
+  const { data: keysData, loading: keysLoading } = useQuery<number>('/api/keys', {
+    select: (raw) => raw.allKeys?.length || 0,
+  });
+  const { data: langsData, loading: langsLoading } = useQuery<number>('/api/languages', {
+    select: (raw) => (Array.isArray(raw) ? raw : raw?.languages ?? []).length,
+  });
+  const { data: tempsData, loading: tempsLoading } = useQuery<number>('/api/templates', {
+    select: (raw) => (Array.isArray(raw) ? raw : []).length,
+  });
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [keysRes, langRes, tempRes] = await Promise.all([
-          api.get('/api/keys'),
-          api.get('/api/languages'),
-          api.get('/api/templates')
-        ]);
-        setStats({
-          keys: keysRes.data.allKeys?.length || 0,
-          languages: langRes.data?.length || 0,
-          templates: tempRes.data?.length || 0
-        });
-      } catch (error) {
-        console.error('Failed to fetch stats', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
+  const loading = keysLoading || langsLoading || tempsLoading;
+  const stats = { keys: keysData ?? 0, languages: langsData ?? 0, templates: tempsData ?? 0 };
 
   return (
     <Box>

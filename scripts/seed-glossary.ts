@@ -4,7 +4,6 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { sql } from 'drizzle-orm';
 
-// Resolve from project root (process.cwd() since npm scripts run from project root)
 const filePath = join(process.cwd(), 'scripts', 'seed-data', 'glossary.json');
 
 interface SeedTerm {

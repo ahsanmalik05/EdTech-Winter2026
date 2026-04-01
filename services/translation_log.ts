@@ -1,15 +1,33 @@
-import { count, avg, sum, sql, gte, lte, and, isNotNull } from "drizzle-orm";
+import { count, avg, sum, sql, gte, lte, and, isNotNull, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { translation_log } from "../db/schema.js";
+import { translation_log, languages, templates } from "../db/schema.js";
 import type { LogTranslationParams, TranslationStats } from "../types/common.js";
 import type { TranslationLog } from "../db/schema.js";
 
+async function resolveLanguageName(targetLanguage: string): Promise<string> {
+    const trimmed = targetLanguage.trim();
+    const [byCode] = await db.select({ name: languages.name })
+        .from(languages)
+        .where(eq(languages.code, trimmed))
+        .limit(1);
+    if (byCode) return byCode.name;
+
+    const [byName] = await db.select({ name: languages.name })
+        .from(languages)
+        .where(eq(languages.name, trimmed))
+        .limit(1);
+    if (byName) return byName.name;
+
+    return trimmed;
+}
+
 export async function logTranslation(params: LogTranslationParams): Promise<void> {
+    const resolvedLanguage = await resolveLanguageName(params.targetLanguage);
     await (db.insert(translation_log).values({
         userId: params.userId,
         sourceText: params.sourceText.trim(),
         translatedText: params.translatedText ?? null,
-        targetLanguage: params.targetLanguage.trim(),
+        targetLanguage: resolvedLanguage,
         model: params.model.trim(),
         tokenCount: params.tokenCount ?? null,
         latencyMs: params.latencyMs,
@@ -43,10 +61,23 @@ async function fetchSuccessCount() {
 }
 
 async function fetchByLanguage() {
-    return db.select({ language: translation_log.targetLanguage, translations: count() })
+    const rows = await db.select({
+            rawLanguage: translation_log.targetLanguage,
+            langName: languages.name,
+            translations: count(),
+        })
         .from(translation_log)
-        .groupBy(translation_log.targetLanguage)
+        .leftJoin(languages, sql`${translation_log.targetLanguage} = ${languages.code} OR ${translation_log.targetLanguage} = ${languages.name}`)
+        .groupBy(translation_log.targetLanguage, languages.name)
         .orderBy(sql`count(*) desc`);
+
+    const merged = new Map<string, number>();
+    for (const r of rows) {
+        const name = r.langName ?? r.rawLanguage;
+        merged.set(name, (merged.get(name) ?? 0) + r.translations);
+    }
+    return Array.from(merged, ([language, translations]) => ({ language, translations }))
+        .sort((a, b) => b.translations - a.translations);
 }
 
 async function fetchByModel() {
@@ -75,16 +106,23 @@ async function fetchTokenStats() {
 
 async function fetchTokensByLanguage() {
     const rows = await db.select({
-            language: translation_log.targetLanguage,
+            rawLanguage: translation_log.targetLanguage,
+            langName: languages.name,
             totalTokens: sum(translation_log.tokenCount),
         })
         .from(translation_log)
-        .groupBy(translation_log.targetLanguage)
+        .leftJoin(languages, sql`${translation_log.targetLanguage} = ${languages.code} OR ${translation_log.targetLanguage} = ${languages.name}`)
+        .groupBy(translation_log.targetLanguage, languages.name)
         .orderBy(sql`sum(token_count) desc`);
-    return rows.map((r) => ({
-        language: r.language,
-        totalTokens: r.totalTokens !== null && r.totalTokens !== undefined ? Number(r.totalTokens) : 0,
-    }));
+
+    const merged = new Map<string, number>();
+    for (const r of rows) {
+        const name = r.langName ?? r.rawLanguage;
+        const tokens = r.totalTokens !== null && r.totalTokens !== undefined ? Number(r.totalTokens) : 0;
+        merged.set(name, (merged.get(name) ?? 0) + tokens);
+    }
+    return Array.from(merged, ([language, totalTokens]) => ({ language, totalTokens }))
+        .sort((a, b) => b.totalTokens - a.totalTokens);
 }
 
 async function fetchTopUsers() {
@@ -95,8 +133,31 @@ async function fetchTopUsers() {
         .limit(10);
 }
 
+async function fetchWorksheetStats() {
+    const [totalRow] = await db.select({ total: count() }).from(templates);
+    const totalGenerated = totalRow?.total ?? 0;
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const [todayRow] = await db.select({ total: count() }).from(templates)
+        .where(gte(templates.createdAt, todayStart));
+    const generatedToday = todayRow?.total ?? 0;
+
+    const bySubject = await db.select({ subject: templates.subject, count: count() })
+        .from(templates)
+        .groupBy(templates.subject)
+        .orderBy(sql`count(*) desc`);
+
+    const byGradeLevel = await db.select({ gradeLevel: templates.gradeLevel, count: count() })
+        .from(templates)
+        .groupBy(templates.gradeLevel)
+        .orderBy(sql`count(*) desc`);
+
+    return { totalGenerated, generatedToday, bySubject, byGradeLevel };
+}
+
 export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
-    const [total, translationsToday, successful, byLanguage, byModel, averageLatencyMs, tokenStats, tokensByLanguage, topUsers] =
+    const [total, translationsToday, successful, byLanguage, byModel, averageLatencyMs, tokenStats, tokensByLanguage, topUsers, worksheetStats] =
         await Promise.all([
             fetchTotalCount(),
             fetchTodayCount(),
@@ -107,6 +168,7 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
             fetchTokenStats(),
             fetchTokensByLanguage(),
             fetchTopUsers(),
+            fetchWorksheetStats(),
         ]);
 
     return {
@@ -120,6 +182,7 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
         tokensByLanguage,
         topUsers,
         cacheHitRate: null,
+        worksheetStats,
     };
 }
 
