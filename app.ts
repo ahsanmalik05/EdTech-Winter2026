@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import config from './config/config.js';
 import { db } from './db/index.js';
 import { users } from './db/schema.js';
@@ -35,6 +36,7 @@ app.use(cors({
     credentials: true,
 }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.use(apiKeyMiddleware);
 

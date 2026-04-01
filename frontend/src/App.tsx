@@ -6,9 +6,9 @@ import {
   Navigate,
   Outlet,
 } from 'react-router-dom';
-import { Languages, Sparkles, KeyRound, Loader2, LogOut, BarChart3, ScrollText, Globe } from 'lucide-react';
-import { cn } from './lib/utils';
+import { KeyRound, Loader2 } from 'lucide-react';
 import { api } from './api/api';
+import { AppSidebar } from './components/AppSidebar';
 import { AuthScreen } from './pages/AuthScreen';
 import { KeySetup } from './pages/KeySetup';
 import { TranslationStudio } from './pages/TranslationStudio';
@@ -46,12 +46,6 @@ function NeedKeyPrompt() {
   );
 }
 
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  cn(
-    'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-    isActive ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
-  );
-
 function AppLayout({
   user,
   apiKey,
@@ -62,103 +56,48 @@ function AppLayout({
   onLogout: () => void;
 }) {
   return (
-    <div className="min-h-dvh flex flex-col">
-      <header className="border-b border-zinc-100 sticky top-0 z-10 bg-white/80 backdrop-blur-sm">
-        <div className="max-w-5xl mx-auto px-6 flex items-center justify-between h-14">
-          <h1 className="font-display text-xl text-zinc-900 select-none">METY</h1>
+    <div className="flex h-dvh w-full">
+      <AppSidebar userEmail={user.email} apiKey={apiKey} onLogout={onLogout} />
 
-          <nav className="flex items-center gap-1 p-1">
-            <NavLink to="/translate" className={navLinkClass}>
-              <Languages className="size-3.5" />
-              Translate
-            </NavLink>
-            <NavLink to="/generate" className={navLinkClass}>
-              <Sparkles className="size-3.5" />
-              Generate
-            </NavLink>
-            <NavLink to="/logs" className={navLinkClass}>
-              <ScrollText className="size-3.5" />
-              Logs
-            </NavLink>
-            <NavLink to="/template-logs" className={navLinkClass}>
-              <ScrollText className="size-3.5" />
-              Template Logs
-            </NavLink>
-            <NavLink to="/stats" className={navLinkClass}>
-              <BarChart3 className="size-3.5" />
-              Stats
-            </NavLink>
-            <NavLink to="/languages" className={navLinkClass}>
-              <Globe className="size-3.5" />
-              Languages
-            </NavLink>
-            <NavLink to="/keys" className={navLinkClass}>
-              <KeyRound className="size-3.5" />
-              Keys
-              {!apiKey && <span className="size-1.5 rounded-full bg-amber-400" />}
-            </NavLink>
-          </nav>
+      <main className="ml-[3.05rem] flex flex-1 flex-col overflow-auto">
+        <div className="mx-auto w-full max-w-5xl flex-1 px-8 py-10 pb-24">
+          <Outlet />
+        </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-400 hidden sm:inline">{user.email}</span>
-            <button
-              onClick={onLogout}
-              className="text-zinc-300 hover:text-zinc-500 transition-colors p-1.5 rounded-md"
-              aria-label="Log out"
-            >
-              <LogOut className="size-3.5" />
-            </button>
+        <footer className="border-t border-zinc-100 py-6">
+          <div className="mx-auto max-w-5xl px-8 flex items-center justify-between">
+            <p className="text-zinc-300 text-xs">METY Technology — CSC 392 / 492</p>
+            <p className="text-zinc-300 text-xs font-display italic">METY</p>
           </div>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-5xl mx-auto px-6 py-10 pb-24 w-full">
-        <Outlet />
+        </footer>
       </main>
-
-      <footer className="border-t border-zinc-100 py-6">
-        <div className="max-w-5xl mx-auto px-6 flex items-center justify-between">
-          <p className="text-zinc-300 text-xs">METY Technology — CSC 392 / 492</p>
-          <p className="text-zinc-300 text-xs font-display italic">METY</p>
-        </div>
-      </footer>
     </div>
   );
 }
 
 export function App() {
-  const [token, setToken] = useState(() => localStorage.getItem('token') || '');
   const [user, setUser] = useState<AppUser | null>(null);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('api_key') || '');
-  const [checkingAuth, setCheckingAuth] = useState(() => !!localStorage.getItem('token'));
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    if (!token) {
-      setCheckingAuth(false);
-      return;
-    }
     api
       .get('/api/auth/me')
       .then((res) => setUser(res.data.user))
       .catch(() => {
-        localStorage.removeItem('token');
         localStorage.removeItem('api_key');
-        setToken('');
         setApiKey('');
       })
       .finally(() => setCheckingAuth(false));
   }, []);
 
-  const handleAuth = (newToken: string, userData: AppUser) => {
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
+  const handleAuth = (userData: AppUser) => {
     setUser(userData);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    try { await api.post('/api/auth/logout'); } catch {}
     localStorage.removeItem('api_key');
-    setToken('');
     setUser(null);
     setApiKey('');
   };
@@ -181,7 +120,7 @@ export function App() {
     );
   }
 
-  const isAuthed = !!token && !!user;
+  const isAuthed = !!user;
 
   return (
     <Routes>

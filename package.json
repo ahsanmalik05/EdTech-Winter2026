@@ -28,6 +28,7 @@
   "homepage": "https://github.com/CSC392-CSC492-Building-AI-ML-systems/EdTech-Winter2026#readme",
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
@@ -50,6 +51,7 @@
     "ai": "^6.0.137",
     "bcrypt": "^6.0.0",
     "cohere-ai": "^7.20.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "drizzle-orm": "^0.45.1",
     "jsonwebtoken": "^9.0.3",

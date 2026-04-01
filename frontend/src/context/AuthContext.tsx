@@ -9,7 +9,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (token: string, userData: User) => void;
+  login: (userData: User) => void;
   logout: () => void;
   setApiKey: (key: string) => void;
   apiKey: string | null;
@@ -24,31 +24,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const res = await api.get('/api/auth/me');
-          setUser(res.data.user);
-        } catch (err) {
-          console.error('Auth check failed', err);
-          localStorage.removeItem('token');
-        }
+      try {
+        const res = await api.get('/api/auth/me');
+        setUser(res.data.user);
+      } catch (err) {
+        console.error('Auth check failed', err);
       }
       setLoading(false);
     };
     initAuth();
   }, []);
 
-  const login = (token: string, userData: User) => {
-    localStorage.setItem('token', token);
+  const login = (userData: User) => {
     setUser(userData);
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    Object.keys(localStorage)
-      .filter(key => key.startsWith('token_'))
-      .forEach(key => localStorage.removeItem(key));
+  const logout = async () => {
+    try { await api.post('/api/auth/logout'); } catch {}
     setUser(null);
   };
 

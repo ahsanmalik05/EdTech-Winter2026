@@ -4,6 +4,25 @@
   --font-display: "Instrument Serif", serif;
   --font-body: "DM Sans", sans-serif;
   --font-mono: "DM Mono", ui-monospace, monospace;
+
+  --color-background: #fafafa;
+  --color-foreground: #18181b;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #18181b;
+  --color-border: #e4e4e7;
+  --color-input: #e4e4e7;
+  --color-primary: #18181b;
+  --color-primary-foreground: #fafafa;
+  --color-secondary: #f4f4f5;
+  --color-secondary-foreground: #18181b;
+  --color-accent: #f4f4f5;
+  --color-accent-foreground: #18181b;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+  --color-ring: #a1a1aa;
+  --ring-offset-background: #ffffff;
 }
 
 * {

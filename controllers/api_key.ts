@@ -3,7 +3,6 @@ import { randomBytes, createHash } from "crypto";
 import { db } from "../db/index.js";
 import { api_keys, users } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import type { CreateApiKeyRequest, UpdateApiKeyRequest, CreateApiKeyResponse, DeleteApiKeyResponse } from "../types/apiKey.js";
 import type { ErrorResponse } from "../types/response.js";
@@ -16,7 +15,6 @@ export const createApiKey = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing required fields" } as ErrorResponse);
     }
 
-    // Validate scopes — only allow known values defined in the database enum
     const VALID_SCOPES = ["read", "translate", "write"] as const;
 
     if (!Array.isArray(scopes) || scopes.length === 0) {
@@ -30,18 +28,10 @@ export const createApiKey = async (req: Request, res: Response) => {
       } as ErrorResponse);
     }
 
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const userId = req.user?.id;
+    if (!userId) {
       return res.status(401).json({ error: "Unauthorized" } as ErrorResponse);
     }
-    console.log(authHeader);
-    const token = authHeader.substring(7);
-    console.log(token);
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET!) as {
-      id: number;
-    };
-    const userId = decodedToken.id;
 
     const userExists = await db
       .select()
@@ -93,17 +83,10 @@ export const createApiKey = async (req: Request, res: Response) => {
 
 export const getApiKeys = async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const userId = req.user?.id;
+    if (!userId) {
       return res.status(401).json({ error: "Unauthorized" } as ErrorResponse);
     }
-
-    const token = authHeader.substring(7);
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET!) as {
-      id: number;
-    };
-    const userId = decodedToken.id;
 
     const allKeys = await db
       .select()

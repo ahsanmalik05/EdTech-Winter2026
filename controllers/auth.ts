@@ -6,6 +6,15 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import type { AuthRegisterRequest, AuthLoginRequest, AuthResponse, MeResponse } from "../types/auth.js";
 import type { ErrorResponse } from "../types/response.js";
+import config from "../config/config.js";
+
+const IS_PROD = config.nodeEnv === 'production';
+
+const COOKIE_OPTIONS: import('express').CookieOptions = {
+  httpOnly: true,
+  maxAge: 60 * 60 * 1000,
+  path: '/',
+};
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -37,7 +46,8 @@ export const register = async (req: Request, res: Response) => {
       expiresIn: "1h",
     });
 
-    const response: AuthResponse = { user: user[0], token };
+    res.cookie('token', token, COOKIE_OPTIONS);
+    const response: AuthResponse = { user: user[0] };
     return res.status(201).json(response);
   } catch (error) {
     console.error("Error registering user:", error);
@@ -67,9 +77,9 @@ export const login = async (req: Request, res: Response) => {
       expiresIn: "1h",
     });
 
+    res.cookie('token', token, COOKIE_OPTIONS);
     const response: AuthResponse = {
       user: { id: user[0]!.id, email: user[0]!.email },
-      token
     };
     return res.status(200).json(response);
   } catch (error) {
@@ -78,15 +88,18 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
+export const logout = async (_req: Request, res: Response) => {
+  res.clearCookie('token', { path: '/' });
+  return res.status(200).json({ message: 'Logged out' });
+};
+
 export const me = async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
+    const token = req.cookies?.token;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({ error: "Unauthorized" } as ErrorResponse);
     }
-
-    const token = authHeader.substring(7);
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET!) as {
       id: number;
     };
