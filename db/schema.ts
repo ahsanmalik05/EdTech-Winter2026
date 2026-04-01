@@ -3,6 +3,7 @@ import {
   boolean,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   serial,
@@ -13,14 +14,26 @@ import {
 
 export const scopes = pgEnum("scopes", ["read", "translate", "write"]);
 
-
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   // this will be hashed
   password: varchar("password", { length: 255 }).notNull(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  emailVerifiedAt: timestamp("email_verified_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const email_verification_tokens = pgTable("email_verification_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const languages = pgTable("languages", {
@@ -43,7 +56,6 @@ export const api_keys = pgTable("api_keys", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-
 export const translation_glossary = pgTable("translation_glossary", {
   id: serial("id").primaryKey(),
   term: varchar("term", { length: 255 }).notNull().unique(),
@@ -57,7 +69,6 @@ export const translation_glossary = pgTable("translation_glossary", {
 
 export type GlossaryTerm = InferSelectModel<typeof translation_glossary>;
 export type NewGlossaryTerm = InferInsertModel<typeof translation_glossary>;
-
 
 export const sectionTypes = pgEnum("section_type", [
   "introduction",
@@ -102,7 +113,9 @@ export type NewTemplate = InferInsertModel<typeof templates>;
 export type TemplateSection = InferSelectModel<typeof templateSections>;
 export type NewTemplateSection = InferInsertModel<typeof templateSections>;
 export type TemplateTranslation = InferSelectModel<typeof templateTranslations>;
-export type NewTemplateTranslation = InferInsertModel<typeof templateTranslations>;
+export type NewTemplateTranslation = InferInsertModel<
+  typeof templateTranslations
+>;
 
 export const translation_log = pgTable("translation_log", {
   id: serial("id").primaryKey(),
@@ -111,9 +124,13 @@ export const translation_log = pgTable("translation_log", {
     .references(() => users.id),
   sourceText: varchar("source_text").notNull(),
   translatedText: varchar("translated_text"),
+  sourceLanguage: varchar("source_language", { length: 16 }),
   targetLanguage: varchar("target_language", { length: 16 }).notNull(),
   model: varchar("model", { length: 255 }).notNull(),
   tokenCount: integer("token_count"),
+  inputTokenCount: integer("input_token_count"),
+  outputTokenCount: integer("output_token_count"),
+  costUsd: numeric("cost_usd", { precision: 10, scale: 6 }),
   latencyMs: integer("latency_ms").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -130,6 +147,10 @@ export const template_generation_log = pgTable("template_generation_log", {
   model: varchar("model", { length: 255 }).notNull(),
   success: boolean("success").notNull(),
   errorMessage: text("error_message"),
+  tokenCount: integer("token_count"),
+  inputTokenCount: integer("input_token_count"),
+  outputTokenCount: integer("output_token_count"),
+  costUsd: numeric("cost_usd", { precision: 10, scale: 6 }),
   latencyMs: integer("latency_ms").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -138,7 +159,45 @@ export type User = InferSelectModel<typeof users>;
 export type ApiKey = InferSelectModel<typeof api_keys>;
 export type TranslationLog = InferSelectModel<typeof translation_log>;
 export type NewTranslationLog = InferInsertModel<typeof translation_log>;
-export type TemplateGenerationLog = InferSelectModel<typeof template_generation_log>;
-export type NewTemplateGenerationLog = InferInsertModel<typeof template_generation_log>;
-export type NewUser = InferInsertModel<typeof users>;
-export type NewApiKey = InferInsertModel<typeof api_keys>;
+export type TemplateGenerationLog = InferSelectModel<
+  typeof template_generation_log
+>;
+export type NewTemplateGenerationLog = InferInsertModel<
+  typeof template_generation_log
+>;
+
+export const template_validations = pgTable("template_validations", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id")
+    .notNull()
+    .references(() => templates.id, { onDelete: "cascade" }),
+  generationLogId: integer("generation_log_id")
+    .references(() => template_generation_log.id, { onDelete: "set null" }),
+  isValid: boolean("is_valid").notNull(),
+  issues: jsonb("issues").$type<string[]>().default([]).notNull(),
+  model: varchar("model", { length: 255 }),
+  validatedAt: timestamp("validated_at").defaultNow().notNull(),
+});
+
+export const translation_validations = pgTable("translation_validations", {
+  id: serial("id").primaryKey(),
+  translationLogId: integer("translation_log_id")
+    .notNull()
+    .references(() => translation_log.id, { onDelete: "cascade" }),
+  backTranslatedText: text("back_translated_text"),
+  similarityScore: numeric("similarity_score", { precision: 4, scale: 3 }),
+  similarityReasoning: text("similarity_reasoning"),
+  sectionCountMatch: boolean("section_count_match"),
+  originalSectionCount: integer("original_section_count"),
+  translatedSectionCount: integer("translated_section_count"),
+  headersIntact: boolean("headers_intact"),
+  overallConfidence: numeric("overall_confidence", { precision: 4, scale: 3 }),
+  translatorNotes: text("translator_notes"),
+  issues: jsonb("issues").$type<string[]>().default([]).notNull(),
+  validatedAt: timestamp("validated_at").defaultNow().notNull(),
+});
+
+export type TemplateValidation = InferSelectModel<typeof template_validations>;
+export type NewTemplateValidation = InferInsertModel<typeof template_validations>;
+export type TranslationValidation = InferSelectModel<typeof translation_validations>;
+export type NewTranslationValidation = InferInsertModel<typeof translation_validations>;

@@ -4,7 +4,6 @@ import cookieParser from 'cookie-parser';
 import config from './config/config.js';
 import { db } from './db/index.js';
 import { users } from './db/schema.js';
-import { chat } from './services/cohere.js';
 import { loadGlossaryCache } from './services/glossary.js';
 import authRouter from './routes/auth.js';
 import apiKeysRouter from './routes/api_key.js';

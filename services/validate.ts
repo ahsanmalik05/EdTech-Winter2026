@@ -1,4 +1,5 @@
-import { chat, scoreSimilarity } from './cohere.js';
+import { translateContent } from './cohere.js';
+import { scoreSimilarity } from './openai.js';
 
 export interface StructuralChecks {
   sectionCountMatch: boolean;
@@ -19,13 +20,13 @@ export async function backTranslate(
   translatedText: string,
   sourceLanguage: string = 'English'
 ): Promise<string> {
-  const prompt = `Translate the following ${sourceLanguage} text back to English. Provide ONLY the translated text, no explanations.
+  const prompt = `Translate the following ${sourceLanguage} text back to English. Return JSON with "translatedText" (the back-translation) and "notes" (brief notes about the translation).
 
 TEXT TO TRANSLATE:
 ${translatedText}`;
 
-  const result = await chat(prompt);
-  return result ?? translatedText;
+  const result = await translateContent(prompt, sourceLanguage);
+  return result.data?.translatedText ?? translatedText;
 }
 
 export function checkStructure(

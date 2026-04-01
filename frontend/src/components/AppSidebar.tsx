@@ -29,6 +29,7 @@ interface AppSidebarProps {
   userEmail: string;
   apiKey: string;
   onLogout: () => void;
+  isBusy?: boolean;
 }
 
 const sidebarMotion = {

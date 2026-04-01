@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import config from "../config/config.js";
 
 interface AuthRequest extends Request {
   user?: {
@@ -10,7 +11,7 @@ interface AuthRequest extends Request {
 export const authMiddleware = (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const token = req.cookies?.token;
@@ -19,7 +20,9 @@ export const authMiddleware = (
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+    const decoded = jwt.verify(token, config.jwtSecret, {
+      algorithms: ["HS256"],
+    }) as {
       id: number;
     };
 
@@ -33,13 +36,15 @@ export const authMiddleware = (
 export const optionalAuthMiddleware = (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const token = req.cookies?.token;
 
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      const decoded = jwt.verify(token, config.jwtSecret, {
+        algorithms: ["HS256"],
+      }) as {
         id: number;
       };
       req.user = { id: decoded.id };

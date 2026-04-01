@@ -13,6 +13,7 @@ export const batchTranslate = async (req: Request, res: Response) => {
 
   try {
     const targetLanguage = req.body.targetLanguage as string | undefined;
+    const sourceLanguage = req.body.sourceLanguage as string | undefined;
     const gradeLevel = req.body.gradeLevel as string | undefined;
 
     if (!targetLanguage || typeof targetLanguage !== "string") {
@@ -61,10 +62,14 @@ export const batchTranslate = async (req: Request, res: Response) => {
             const res = await logTranslation({
               userId: req.apiKey.user_id,
               sourceText: item.text,
-              translatedText: result.translatedText ?? undefined,
+              translatedText: result.data?.translatedText ?? undefined,
+              sourceLanguage,
               targetLanguage,
               model: DEFAULT_MODEL,
               tokenCount: result.tokenCount ?? undefined,
+              inputTokenCount: result.inputTokenCount ?? undefined,
+              outputTokenCount: result.outputTokenCount ?? undefined,
+              costUsd: undefined, // Calculated in logTranslation service
               latencyMs,
             });
             console.log("Logged translation:", res);
@@ -139,7 +144,11 @@ export const batchTranslateStream = async (req: Request, res: Response) => {
 
       sendEvent("translating", { fileName });
 
-      const { text: translatedText } = await translateContent(text, targetLanguage);
+      const { data } = await translateContent(
+        text,
+        targetLanguage,
+      );
+      const translatedText = data?.translatedText ?? null;
 
       if (translatedText) {
         sendEvent("item_done", {

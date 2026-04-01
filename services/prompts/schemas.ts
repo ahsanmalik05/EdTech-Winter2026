@@ -51,5 +51,17 @@ export const validationSchema = z.object({
     .describe("List of specific issues found, empty if valid"),
 });
 
+export const similarityScoreSchema = z.object({
+  score: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("Similarity score between 0.0 and 1.0"),
+  reasoning: z
+    .string()
+    .describe("One sentence explaining the score"),
+});
+
 export type TemplateOutput = z.infer<typeof templateSchema>;
 export type ValidationOutput = z.infer<typeof validationSchema>;
+export type SimilarityScoreOutput = z.infer<typeof similarityScoreSchema>;

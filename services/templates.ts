@@ -1,12 +1,13 @@
 import { eq, and, ilike } from "drizzle-orm";
 import { db } from "../db/index.js";
+import config from "../config/config.js";
 import {
   templates,
   templateSections,
   type NewTemplate,
   type NewTemplateSection,
 } from "../db/schema.js";
-import { orchestrateGeneration } from "./openai.js";
+import { orchestrateGeneration, type GenerationResult } from "./openai.js";
 import type {
   GenerateTemplateRequest,
   TemplateResponse,
@@ -15,7 +16,7 @@ import type {
   UpdateTemplateRequest,
 } from "../types/templates.js";
 
-export const DEFAULT_TEMPLATE_MODEL = "gpt-5-nano";
+export const DEFAULT_TEMPLATE_MODEL = config.models.generation;
 const SECTION_ORDER: Array<keyof TemplateSections> = [
   "introduction",
   "model_assessment",
@@ -48,12 +49,23 @@ function buildResponse(
   };
 }
 
+export interface GenerateTemplateResult {
+  response: TemplateResponse;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  } | null;
+}
+
 export async function generateTemplate(
   params: GenerateTemplateRequest,
-): Promise<TemplateResponse> {
+  createdByUserId?: number,
+): Promise<GenerateTemplateResult> {
   const { subject, topic, gradeLevel } = params;
 
-  const sections = await orchestrateGeneration(subject, topic, gradeLevel);
+  const result = await orchestrateGeneration(subject, topic, gradeLevel);
+  const { sections, usage } = result;
 
   const existing = await db
     .select({ version: templates.version })
@@ -75,6 +87,7 @@ export async function generateTemplate(
     topic,
     gradeLevel,
     version: nextVersion,
+    ...(createdByUserId ? { createdByUserId } : {}),
   };
 
   const [inserted] = await db.insert(templates).values(newTemplate).returning();
@@ -92,16 +105,23 @@ export async function generateTemplate(
     .values(sectionRows)
     .returning();
 
-  return buildResponse(inserted, insertedSections);
+  const response = buildResponse(inserted, insertedSections);
+  return { response, usage };
 }
 
 export async function getTemplateById(
   id: number,
+  userId?: number,
 ): Promise<TemplateResponse | null> {
+  const conditions = [eq(templates.id, id)];
+  if (userId !== undefined) {
+    conditions.push(eq(templates.createdByUserId, userId));
+  }
+
   const [template] = await db
     .select()
     .from(templates)
-    .where(eq(templates.id, id))
+    .where(and(...conditions))
     .limit(1);
 
   if (!template) return null;
@@ -116,9 +136,13 @@ export async function getTemplateById(
 
 export async function listTemplates(
   filters: ListTemplatesQuery,
+  userId?: number,
 ): Promise<TemplateResponse[]> {
   const conditions = [];
 
+  if (userId !== undefined) {
+    conditions.push(eq(templates.createdByUserId, userId));
+  }
   if (filters.subject) {
     conditions.push(ilike(templates.subject, `%${filters.subject}%`));
   }
@@ -152,11 +176,17 @@ export async function listTemplates(
 export async function updateTemplate(
   id: number,
   updates: UpdateTemplateRequest,
+  userId?: number,
 ): Promise<TemplateResponse | null> {
+  const conditions = [eq(templates.id, id)];
+  if (userId !== undefined) {
+    conditions.push(eq(templates.createdByUserId, userId));
+  }
+
   const [existing] = await db
     .select()
     .from(templates)
-    .where(eq(templates.id, id))
+    .where(and(...conditions))
     .limit(1);
 
   if (!existing) return null;
@@ -195,11 +225,19 @@ export async function updateTemplate(
   return getTemplateById(id);
 }
 
-export async function deactivateTemplate(id: number): Promise<boolean> {
+export async function deactivateTemplate(
+  id: number,
+  userId?: number,
+): Promise<boolean> {
+  const conditions = [eq(templates.id, id)];
+  if (userId !== undefined) {
+    conditions.push(eq(templates.createdByUserId, userId));
+  }
+
   const result = await db
     .update(templates)
     .set({ isActive: false, updatedAt: new Date() })
-    .where(eq(templates.id, id))
+    .where(and(...conditions))
     .returning({ id: templates.id });
 
   return result.length > 0;

@@ -4,7 +4,7 @@ import {
   Route,
   NavLink,
   Navigate,
-  Outlet,
+  useLocation,
 } from 'react-router-dom';
 import { KeyRound, Loader2 } from 'lucide-react';
 import { api } from './api/api';
@@ -17,10 +17,21 @@ import { TranslationStats } from './pages/TranslationStats';
 import { TranslationLog } from './pages/TranslationLog';
 import { TemplateGenerationLog } from './pages/TemplateGenerationLog';
 import { LanguageManager } from './pages/LanguageManager';
+import { cn } from './lib/utils';
 
 interface AppUser {
   id: number;
   email: string;
+}
+
+type PageKey = 'translate' | 'generate' | 'logs' | 'template-logs' | 'stats' | 'languages' | 'keys';
+
+const PAGES: PageKey[] = ['translate', 'generate', 'logs', 'template-logs', 'stats', 'languages', 'keys'];
+
+function pageFromPath(pathname: string): PageKey {
+  const path = pathname.slice(1) || 'translate';
+  if (PAGES.includes(path as PageKey)) return path as PageKey;
+  return 'translate';
 }
 
 function NeedKeyPrompt() {
@@ -55,13 +66,57 @@ function AppLayout({
   apiKey: string;
   onLogout: () => void;
 }) {
+  const location = useLocation();
+  const activePage = pageFromPath(location.pathname);
+
+  const [translateBusy, setTranslateBusy] = useState(false);
+  const [generateBusy, setGenerateBusy] = useState(false);
+
+  const isBusy = translateBusy || generateBusy;
+
   return (
     <div className="flex h-dvh w-full">
-      <AppSidebar userEmail={user.email} apiKey={apiKey} onLogout={onLogout} />
+      <AppSidebar
+        userEmail={user.email}
+        apiKey={apiKey}
+        onLogout={onLogout}
+        isBusy={isBusy}
+      />
 
-      <main className="ml-[3.05rem] flex flex-1 flex-col overflow-auto">
+      <main className="ml-[3.05rem] flex flex-1 flex-col overflow-auto relative">
         <div className="mx-auto w-full max-w-5xl flex-1 px-8 py-10 pb-24">
-          <Outlet />
+          {/* Persistent pages - mounted once, hidden when inactive */}
+          <div className={cn('contents', activePage !== 'translate' && 'hidden')}>
+            {apiKey ? <TranslationStudio onBusyChange={setTranslateBusy} /> : <NeedKeyPrompt />}
+          </div>
+          <div className={cn('contents', activePage !== 'generate' && 'hidden')}>
+            {apiKey ? <TemplateGenerator onBusyChange={setGenerateBusy} /> : <NeedKeyPrompt />}
+          </div>
+          <div className={cn('contents', activePage !== 'logs' && 'hidden')}>
+            {apiKey ? <TranslationLog /> : <NeedKeyPrompt />}
+          </div>
+          <div className={cn('contents', activePage !== 'template-logs' && 'hidden')}>
+            {apiKey ? <TemplateGenerationLog /> : <NeedKeyPrompt />}
+          </div>
+          <div className={cn('contents', activePage !== 'stats' && 'hidden')}>
+            {apiKey ? <TranslationStats /> : <NeedKeyPrompt />}
+          </div>
+          <div className={cn('contents', activePage !== 'languages' && 'hidden')}>
+            {apiKey ? <LanguageManager /> : <NeedKeyPrompt />}
+          </div>
+          <div className={cn('contents', activePage !== 'keys' && 'hidden')}>
+            <KeySetup
+              onActivateKey={(key) => {
+                localStorage.setItem('api_key', key);
+                window.location.reload();
+              }}
+              activeKey={apiKey}
+              onDeactivateKey={() => {
+                localStorage.removeItem('api_key');
+                window.location.reload();
+              }}
+            />
+          </div>
         </div>
 
         <footer className="border-t border-zinc-100 py-6">
@@ -102,16 +157,6 @@ export function App() {
     setApiKey('');
   };
 
-  const handleActivateKey = (key: string) => {
-    localStorage.setItem('api_key', key);
-    setApiKey(key);
-  };
-
-  const handleDeactivateKey = () => {
-    localStorage.removeItem('api_key');
-    setApiKey('');
-  };
-
   if (checkingAuth) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
@@ -144,40 +189,13 @@ export function App() {
           )
         }
       >
-        <Route
-          path="/translate"
-          element={apiKey ? <TranslationStudio /> : <NeedKeyPrompt />}
-        />
-        <Route
-          path="/generate"
-          element={apiKey ? <TemplateGenerator /> : <NeedKeyPrompt />}
-        />
-        <Route
-          path="/logs"
-          element={apiKey ? <TranslationLog /> : <NeedKeyPrompt />}
-        />
-        <Route
-          path="/template-logs"
-          element={apiKey ? <TemplateGenerationLog /> : <NeedKeyPrompt />}
-        />
-        <Route
-          path="/stats"
-          element={apiKey ? <TranslationStats /> : <NeedKeyPrompt />}
-        />
-        <Route
-          path="/languages"
-          element={apiKey ? <LanguageManager /> : <NeedKeyPrompt />}
-        />
-        <Route
-          path="/keys"
-          element={
-            <KeySetup
-              onActivateKey={handleActivateKey}
-              activeKey={apiKey}
-              onDeactivateKey={handleDeactivateKey}
-            />
-          }
-        />
+        <Route path="/translate" element={<div />} />
+        <Route path="/generate" element={<div />} />
+        <Route path="/logs" element={<div />} />
+        <Route path="/template-logs" element={<div />} />
+        <Route path="/stats" element={<div />} />
+        <Route path="/languages" element={<div />} />
+        <Route path="/keys" element={<div />} />
         <Route
           path="*"
           element={<Navigate to={apiKey ? '/translate' : '/keys'} replace />}

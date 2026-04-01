@@ -1,195 +1,182 @@
-import { CohereClientV2 } from 'cohere-ai';
-import OpenAI from 'openai';
-import config from '../config/config.js';
-import { matchTerms, buildGlossaryPrompt } from './glossary.js';
+import { generateText, streamText, Output } from "ai";
+import { cohere } from "@ai-sdk/cohere";
+import { z } from "zod";
+import config from "../config/config.js";
+import { matchTerms, buildGlossaryPrompt } from "./glossary.js";
+import { TRANSLATION_SYSTEM, TRANSLATION_STREAM_SYSTEM } from "./prompts/system.js";
 
-const cohere = new CohereClientV2({
-  token: config.cohereApiKey,
+const translationSchema = z.object({
+  translatedText: z.string(),
+  notes: z.string(),
 });
 
-const openai = new OpenAI({
-  apiKey: config.openaiApiKey,
-});
+export type TranslationOutput = z.infer<typeof translationSchema>;
 
-async function chatWithFallback(prompt: string, model: string): Promise<{ text: string | null; tokenCount: number | null }> {
-  try {
-    const response = await cohere.chat({
-      model,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    if (response.message?.content?.[0]?.type === 'text') {
-      const tokenCount =
-        (response.usage?.tokens?.inputTokens ?? 0) +
-        (response.usage?.tokens?.outputTokens ?? 0) || null;
-      return { text: response.message.content[0].text, tokenCount };
-    }
-  } catch (error) {
-    console.error('Cohere chat failed, falling back to OpenAI:', error);
-  }
-
-  const fallback = await openai.responses.create({
-    model: 'gpt-4o-mini',
-    input: prompt,
-  });
-
-  const tokenCount =
-    (fallback.usage?.input_tokens ?? 0) +
-    (fallback.usage?.output_tokens ?? 0) || null;
-  return { text: fallback.output_text || null, tokenCount };
-}
-
-export async function chat(message: string, model: string = 'command-a-translate-08-2025') {
-  const result = await chatWithFallback(message, model);
-  return result.text;
-}
-
-export async function chatStream(
-  message: string,
-  onToken: (token: string) => void,
-  model: string = 'command-a-translate-08-2025'
-) {
-  const stream = await cohere.chatStream({
-    model,
-    messages: [{ role: 'user', content: message }],
-  });
-
-  for await (const event of stream) {
-    if (event.type === 'content-delta' && event.delta?.message?.content?.text) {
-      onToken(event.delta.message.content.text);
-    }
-  }
-}
-
-export async function embed(
-  texts: string[],
-  inputType: 'search_document' | 'search_query' | 'classification' | 'clustering' = 'search_document',
-  model: string = 'embed-english-v3.0'
-) {
-  const response = await cohere.embed({
-    texts,
-    model,
-    inputType,
-    embeddingTypes: ['float'],
-  });
-
-  return response.embeddings;
-}
+export type TranslateResult = {
+  data: TranslationOutput | null;
+  tokenCount: number | null;
+};
 
 export async function translateContent(
   content: string,
   targetLanguage: string,
-  model: string = 'command-a-translate-08-2025'
-) {
+  model: string = config.models.translation,
+): Promise<TranslateResult> {
   const matched = matchTerms(content);
   const glossaryBlock = buildGlossaryPrompt(matched);
+  const systemPrompt = `${TRANSLATION_SYSTEM}\n\n${glossaryBlock}`.trim();
+  const prompt = `Translate the following into ${targetLanguage}:\n\n${content}`;
 
-  const systemPrompt = `You are an expert educational content translator. Your task is to translate educational material while preserving pedagogical meaning and cultural relevance.
+  try {
+    const { output, usage } = await generateText({
+      model: cohere(model),
+      output: Output.object({
+        schema: translationSchema,
+      }),
+      system: systemPrompt,
+      prompt,
+    });
 
-CRITICAL RULES:
-- Translate for MEANING, not word-for-word. Adapt analogies, idioms, and culturally-specific references to equivalents that resonate in the target culture and region.
-- For abbreviations/acronyms: use the target language and region's established equivalent if one exists. If none exists, keep the original with a brief inline explanation on first use.
-- Maintain the same educational register and tone.
-- Preserve all formatting, structure, and markup.
-- Provide ONLY the translated text without any explanations or commentary.
+    const tokenCount =
+      usage && usage.inputTokens !== undefined && usage.outputTokens !== undefined
+        ? usage.inputTokens + usage.outputTokens
+        : null;
 
-${glossaryBlock}`.trim();
-
-  const prompt = `${systemPrompt}\n\nTranslate the following into ${targetLanguage}:\n\n${content}`;
-  return chatWithFallback(prompt, model);
+    return { data: output, tokenCount };
+  } catch (error) {
+    console.error("Cohere translation failed:", error);
+    return { data: null, tokenCount: null };
+  }
 }
-
-export type TranslateResult = { text: string | null; tokenCount: number | null };
 
 export async function translateContentStream(
   content: string,
   targetLanguage: string,
   onToken: (token: string) => void,
-  model: string = 'command-a-translate-08-2025'
+  model: string = config.models.translation,
 ): Promise<{ tokenCount: number | null }> {
   const matched = matchTerms(content);
   const glossaryBlock = buildGlossaryPrompt(matched);
 
-  const systemPrompt = `You are an expert educational content translator. Your task is to translate educational material while preserving pedagogical meaning and cultural relevance.
+  const systemPrompt = `${TRANSLATION_STREAM_SYSTEM}\n\n${glossaryBlock}`.trim();
+  const prompt = `Translate the following into ${targetLanguage}:\n\n${content}`;
 
-CRITICAL RULES:
-- Translate for MEANING, not word-for-word. Adapt analogies, idioms, and culturally-specific references to equivalents that resonate in the target culture and region.
-- For abbreviations/acronyms: use the target language and region's established equivalent if one exists. If none exists, keep the original with a brief inline explanation on first use.
-- Maintain the same educational register and tone.
-- Preserve all formatting, structure, and markup.
-- Provide ONLY the translated text without any explanations or commentary.
+  try {
+    const { textStream, usage } = await streamText({
+      model: cohere(model),
+      system: systemPrompt,
+      prompt,
+    });
 
-${glossaryBlock}`.trim();
-
-  const stream = await cohere.chatStream({
-    model,
-    messages: [
-      {
-        role: 'system',
-        content: systemPrompt,
-      },
-      {
-        role: 'user',
-        content: `Translate the following into ${targetLanguage}:\n\n${content}`,
-      },
-    ],
-  });
-
-  let tokenCount: number | null = null;
-  for await (const event of stream) {
-    if (event.type === 'content-delta' && event.delta?.message?.content?.text) {
-      onToken(event.delta.message.content.text);
+    for await (const token of textStream) {
+      onToken(token);
     }
-    if (event.type === 'message-end' && (event as any).delta?.usage?.tokens) {
-      const tokens = (event as any).delta.usage.tokens;
-      tokenCount = (tokens.inputTokens ?? 0) + (tokens.outputTokens ?? 0) || null;
-    }
+
+    const finalUsage = await usage;
+    const tokenCount =
+      finalUsage && finalUsage.inputTokens !== undefined && finalUsage.outputTokens !== undefined
+        ? finalUsage.inputTokens + finalUsage.outputTokens
+        : null;
+
+    return { tokenCount };
+  } catch (error) {
+    console.error("Cohere stream translation failed:", error);
+    return { tokenCount: null };
   }
-  return { tokenCount };
 }
 
 export async function translateBatch(
   items: { id: string; text: string }[],
   targetLanguage: string,
   gradeLevel?: string,
-  model: string = 'command-a-translate-08-2025'
-): Promise<Record<string, { translatedText: string | null; tokenCount?: number | null; error?: string }>> {
+  model: string = config.models.translation,
+): Promise<
+  Record<
+    string,
+    {
+      data: TranslationOutput | null;
+      tokenCount?: number | null;
+      inputTokenCount?: number | null;
+      outputTokenCount?: number | null;
+      error?: string;
+    }
+  >
+> {
   const buildPrompt = (text: string) => {
     const gradeLevelInstruction = gradeLevel
       ? ` Use vocabulary and sentence structure appropriate for ${gradeLevel} students.`
-      : '';
-    return `You are a professional translator. Translate the following content into ${targetLanguage}. Maintain the same structure, formatting, and tone.${gradeLevelInstruction} Provide ONLY the translated text without any explanations.\n\nCONTENT TO TRANSLATE:\n\n${text}`;
+      : "";
+    return `You are a professional translator. Translate the following content into ${targetLanguage}. Maintain the same structure, formatting, and tone.${gradeLevelInstruction} Return a JSON object with "translatedText" (the full translation) and "notes" (brief translator notes about cultural adaptations or tricky translation decisions).\n\nCONTENT TO TRANSLATE:\n\n${text}`;
   };
 
   const promises = items.map(async (item) => {
     const prompt = buildPrompt(item.text);
-    const response = await cohere.chat({
-      model,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    const translatedText =
-      response.message?.content?.[0]?.type === 'text'
-        ? response.message.content[0].text
-        : null;
-    const tokenCount =
-      (response.usage?.tokens?.inputTokens ?? 0) +
-      (response.usage?.tokens?.outputTokens ?? 0) || null;
-    return { id: item.id, translatedText, tokenCount };
+    try {
+      const { output, usage } = await generateText({
+        model: cohere(model),
+        output: Output.object({
+          schema: translationSchema,
+        }),
+        system: TRANSLATION_SYSTEM,
+        prompt,
+      });
+
+      const inputTokenCount = usage?.inputTokens ?? null;
+      const outputTokenCount = usage?.outputTokens ?? null;
+      const tokenCount =
+        inputTokenCount !== null && outputTokenCount !== null
+          ? inputTokenCount + outputTokenCount
+          : null;
+
+      return {
+        id: item.id,
+        data: output,
+        tokenCount,
+        inputTokenCount,
+        outputTokenCount,
+      };
+    } catch (error) {
+      return {
+        id: item.id,
+        data: null,
+        tokenCount: null,
+        inputTokenCount: null,
+        outputTokenCount: null,
+        error: error instanceof Error ? error.message : "Translation failed",
+      };
+    }
   });
 
   const settled = await Promise.allSettled(promises);
 
-  const results: Record<string, { translatedText: string | null; tokenCount?: number | null; error?: string }> = {};
+  const results: Record<
+    string,
+    {
+      data: TranslationOutput | null;
+      tokenCount?: number | null;
+      inputTokenCount?: number | null;
+      outputTokenCount?: number | null;
+      error?: string;
+    }
+  > = {};
+
   for (let i = 0; i < settled.length; i++) {
     const result = settled[i]!;
     const item = items[i]!;
-    if (result.status === 'fulfilled') {
-      results[result.value.id] = { translatedText: result.value.translatedText, tokenCount: result.value.tokenCount };
+    if (result.status === "fulfilled") {
+      results[result.value.id] = {
+        data: result.value.data,
+        tokenCount: result.value.tokenCount,
+        inputTokenCount: result.value.inputTokenCount,
+        outputTokenCount: result.value.outputTokenCount,
+      };
     } else {
       results[item.id] = {
-        translatedText: null,
+        data: null,
         tokenCount: null,
-        error: result.reason?.message || 'Translation failed',
+        inputTokenCount: null,
+        outputTokenCount: null,
+        error: result.reason?.message || "Translation failed",
       };
     }
   }
@@ -197,48 +184,39 @@ export async function translateBatch(
   return results;
 }
 
-export async function scoreSimilarity(
-  original: string,
-  backTranslated: string,
-): Promise<{ score: number; reasoning: string } | null> {
-  const prompt = `You are evaluating translation quality. You will be given an original text and a back-translated version of it (translated to another language, then back to the original language). A perfect round-trip translation would produce text identical in meaning to the original.
+export async function embed(
+  texts: string[],
+  inputType:
+    | "search_document"
+    | "search_query"
+    | "classification"
+    | "clustering" = "search_document",
+  model: string = "embed-english-v3.0",
+) {
+  // Note: Vercel AI SDK doesn't have a direct embed function for Cohere yet
+  // Falling back to direct fetch for embeddings
+  const response = await fetch("https://api.cohere.com/v2/embed", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.COHERE_API_KEY}`,
+    },
+    body: JSON.stringify({
+      texts,
+      model,
+      input_type: inputType,
+      embedding_types: ["float"],
+    }),
+  });
 
-Compare the two texts and respond with ONLY a JSON object in this exact format, no other text:
-{
-  "score": <number between 0.0 and 1.0>,
-  "reasoning": "<one sentence explaining the score>"
-}
-
-Scoring guide:
-- 0.9 to 1.0: meaning is fully preserved, only trivial wording differences
-- 0.7 to 0.9: meaning mostly preserved, minor nuances lost
-- 0.5 to 0.7: meaning partially preserved, some key ideas altered
-- below 0.5: significant meaning lost or distorted
-
-ORIGINAL TEXT:
-${original}
-
-BACK-TRANSLATED TEXT:
-${backTranslated}`;
-
-  try {
-    const response = await openai.responses.create({
-      model: 'gpt-4o-mini',
-      input: prompt,
-    });
-
-    const text = response.output_text;
-    if (!text) return null;
-
-    const cleaned = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleaned) as { score: number; reasoning: string };
-    parsed.score = Math.min(1, Math.max(0, parsed.score));
-    return parsed;
-  } catch (error) {
-    console.error('Failed to parse similarity score:', error);
-    return null;
+  if (!response.ok) {
+    throw new Error(`Cohere embed API error: ${response.status}`);
   }
+
+  const data = await response.json();
+  return data.embeddings;
 }
 
+// Legacy export for compatibility
 export { cohere };
 export default cohere;
