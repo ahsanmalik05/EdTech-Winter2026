@@ -4,7 +4,7 @@ import { PDFViewer, pdf } from '@react-pdf/renderer';
 import { cn } from '../lib/utils';
 import { api } from '../api/api';
 import { TemplatePDF } from '../components/TemplatePDF';
-import { useQuery } from '../api/useQuery';
+import { useQuery, invalidateQuery } from '../api/useQuery';
 
 interface TemplateSections {
   introduction: string;
@@ -164,6 +164,9 @@ export function TemplateGenerator({ onBusyChange }: { onBusyChange?: (busy: bool
         gradeLevel: gradeLevel.trim(),
         topic: topic.trim(),
       });
+
+      invalidateQuery('/api/template-generation-log');
+
       const created = res.data as TemplateResponse;
       mutateTemplates((prev) => [created, ...(prev ?? [])]);
       setExpandedId(created.id);
