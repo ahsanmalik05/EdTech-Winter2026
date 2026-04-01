@@ -20,8 +20,9 @@ import {
 
 export async function normalizeInputs(
   subject: string,
+  topic: string,
   gradeLevel: string,
-): Promise<{ subject: string; gradeLevel: string }> {
+): Promise<{ subject: string; topic: string; gradeLevel: string }> {
   try {
     const { object } = await generateObject({
       model: openai("gpt-5-nano"),
@@ -30,20 +31,47 @@ export async function normalizeInputs(
 
 Rules:
 - Subject: Title Case the full, standard subject name. Expand abbreviations (e.g. "comp sci" → "Computer Science", "Cs" → "Computer Science", "bio" → "Biology"). If it's already correct, keep it as-is.
+- Topic: Normalize capitalization, but keep the topic meaning intact.
 - Grade Level: Capitalize properly (e.g. "5th grade" → "5th Grade"). If just a number, infer the grade (e.g. "3" → "3rd Grade"). If already correct, keep as-is.
+- Mark valid as false when the subject is not a plausible school/academic subject, when the topic is not a plausible educational topic for that subject, or when the input looks random, unclear, or nonsensical.
+- If an input is invalid, explain why in issues. Do not silently "fix" nonsense into something valid.
 
 Inputs:
 Subject: ${subject}
+Topic: ${topic}
 Grade Level: ${gradeLevel}`,
     });
-    return { subject: object.subject, gradeLevel: object.gradeLevel };
+
+    if (!object.valid) {
+      throw Object.assign(
+        new Error(
+          object.issues[0] ??
+            "Please enter a valid school subject, topic, and grade level.",
+        ),
+        {
+          name: "InputNormalizationError",
+          issues: object.issues,
+        },
+      );
+    }
+
+    return {
+      subject: object.subject,
+      topic: object.topic,
+      gradeLevel: object.gradeLevel,
+    };
   } catch (err) {
+    if (err instanceof Error && err.name === "InputNormalizationError") {
+      throw err;
+    }
+
     console.error(
       "Input normalization failed, using title-case fallback:",
       err,
     );
     return {
       subject: subject.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
+      topic: topic.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
       gradeLevel: gradeLevel.trim().replace(/\b\w/g, (c) => c.toUpperCase()),
     };
   }

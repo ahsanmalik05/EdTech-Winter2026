@@ -7,9 +7,11 @@ import {
   updateTemplate,
   deactivateTemplate,
 } from "../services/templates.js";
-import { normalizeInputs } from "../services/openai.js";
+import {
+  normalizeInputs,
+  validateInBackground,
+} from "../services/openai.js";
 import { logTemplateGeneration } from "../services/template_generation_log.js";
-import { validateInBackground } from "../services/openai.js";
 import type {
   GenerateTemplateRequest,
   ListTemplatesQuery,
@@ -43,12 +45,17 @@ export const generate = async (
 
     const userId = req.user?.id ?? req.apiKey?.user_id;
 
-    const normalized = await normalizeInputs(subject, gradeLevel);
+    const normalized = await normalizeInputs(subject, topic, gradeLevel);
     const normalizedSubject = normalized.subject;
+    const normalizedTopic = normalized.topic;
     const normalizedGradeLevel = normalized.gradeLevel;
 
     const result = await generateTemplate(
-      { subject: normalizedSubject, topic, gradeLevel: normalizedGradeLevel },
+      {
+        subject: normalizedSubject,
+        topic: normalizedTopic,
+        gradeLevel: normalizedGradeLevel,
+      },
       userId,
     );
     const latencyMs = Date.now() - startedAt;
@@ -57,7 +64,7 @@ export const generate = async (
       templateId: result.response.id,
       ...(userId ? { userId } : {}),
       subject: normalizedSubject,
-      topic,
+      topic: normalizedTopic,
       gradeLevel: normalizedGradeLevel,
       model: DEFAULT_TEMPLATE_MODEL,
       success: true,
@@ -82,6 +89,22 @@ export const generate = async (
 
     res.status(201).json(result.response);
   } catch (error) {
+    const errorIssues =
+      error instanceof Error
+        ? (error as Error & { issues?: unknown }).issues
+        : undefined;
+    const issues = Array.isArray(errorIssues)
+      ? errorIssues.filter((issue): issue is string => typeof issue === "string")
+      : [];
+
+    if (error instanceof Error && error.name === "InputNormalizationError") {
+      res.status(400).json({
+        error: error.message,
+        issues,
+      });
+      return;
+    }
+
     console.error("Template generation error:", error);
     const latencyMs = Date.now() - startedAt;
 
