@@ -13,6 +13,11 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const scopes = pgEnum("scopes", ["read", "translate", "write"]);
+export const pdfUploadStatuses = pgEnum("pdf_upload_status", [
+  "uploaded",
+  "failed",
+  "skipped",
+]);
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -139,16 +144,11 @@ export const pdf_uploads = pgTable("pdf_uploads", {
   userId: integer("user_id").references(() => users.id, {
     onDelete: "set null",
   }),
-  flow: varchar("flow", { length: 64 }).notNull(),
-  fieldName: varchar("field_name", { length: 64 }).notNull(),
-  originalName: varchar("original_name", { length: 255 }).notNull(),
-  mimeType: varchar("mime_type", { length: 255 }).notNull(),
-  sizeBytes: integer("size_bytes").notNull(),
-  bucketName: varchar("bucket_name", { length: 255 }),
-  objectKey: text("object_key"),
-  status: varchar("status", { length: 32 }).notNull(),
-  errorMessage: text("error_message"),
-  contentHash: varchar("content_hash", { length: 64 }),
+  contentHash: varchar("content_hash").notNull(),
+  originalName: varchar("original_name"),
+  objectKey: varchar("object_key"),
+  fileSizeBytes: integer("file_size_bytes"),
+  status: pdfUploadStatuses("status").notNull(),
   reusedExisting: boolean("reused_existing").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

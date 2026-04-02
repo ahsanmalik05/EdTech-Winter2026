@@ -19,6 +19,13 @@ import type { TranslationLog } from "../db/schema.js";
 import { calculateCost } from "../utils/cost.js";
 import { elapsedMs, logError, logInfo } from "../utils/observability.js";
 
+const STATS_CACHE_MS = 15_000;
+
+let translationStatsCache:
+  | { value: TranslationStats; expiresAt: number }
+  | null = null;
+let translationStatsInFlight: Promise<TranslationStats> | null = null;
+
 async function resolveLanguageName(targetLanguage: string): Promise<string> {
   const trimmed = targetLanguage.trim();
   const [byCode] = await db
@@ -333,6 +340,18 @@ async function fetchCacheHitRate(): Promise<number | null> {
 }
 
 export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
+  if (translationStatsCache && translationStatsCache.expiresAt > Date.now()) {
+    logInfo("translation_stats_cache_hit", {
+      expiresInMs: translationStatsCache.expiresAt - Date.now(),
+    });
+    return translationStatsCache.value;
+  }
+
+  if (translationStatsInFlight) {
+    logInfo("translation_stats_inflight_reused", {});
+    return translationStatsInFlight;
+  }
+
   const runStatQuery = async <T>(
     name: string,
     fn: () => Promise<T>,
@@ -355,61 +374,91 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
     }
   };
 
-  const [
-    total,
-    translationsToday,
-    successful,
-    byLanguage,
-    byModel,
-    averageLatencyMs,
-    tokenStats,
-    tokensByLanguage,
-    topUsers,
-    worksheetStats,
-    costStats,
-    templatesByDay,
-    topSubjectTopicPairs,
-    templatesPerUser,
-    gradeLevelBySubject,
-    cacheHitRate,
-  ] = await Promise.all([
-    runStatQuery("fetchTotalCount", fetchTotalCount),
-    runStatQuery("fetchTodayCount", fetchTodayCount),
-    runStatQuery("fetchSuccessCount", fetchSuccessCount),
-    runStatQuery("fetchByLanguage", fetchByLanguage),
-    runStatQuery("fetchByModel", fetchByModel),
-    runStatQuery("fetchAverageLatency", fetchAverageLatency),
-    runStatQuery("fetchTokenStats", fetchTokenStats),
-    runStatQuery("fetchTokensByLanguage", fetchTokensByLanguage),
-    runStatQuery("fetchTopUsers", fetchTopUsers),
-    runStatQuery("fetchWorksheetStats", fetchWorksheetStats),
-    runStatQuery("fetchCostStats", fetchCostStats),
-    runStatQuery("fetchTemplatesByDay", fetchTemplatesByDay),
-    runStatQuery("fetchTopSubjectTopicPairs", fetchTopSubjectTopicPairs),
-    runStatQuery("fetchTemplatesPerUser", fetchTemplatesPerUser),
-    runStatQuery("fetchGradeLevelBySubject", fetchGradeLevelBySubject),
-    runStatQuery("fetchCacheHitRate", fetchCacheHitRate),
-  ]);
+  translationStatsInFlight = (async () => {
+    const total = await runStatQuery("fetchTotalCount", fetchTotalCount);
+    const translationsToday = await runStatQuery(
+      "fetchTodayCount",
+      fetchTodayCount,
+    );
+    const successful = await runStatQuery(
+      "fetchSuccessCount",
+      fetchSuccessCount,
+    );
+    const byLanguage = await runStatQuery("fetchByLanguage", fetchByLanguage);
+    const byModel = await runStatQuery("fetchByModel", fetchByModel);
+    const averageLatencyMs = await runStatQuery(
+      "fetchAverageLatency",
+      fetchAverageLatency,
+    );
+    const tokenStats = await runStatQuery("fetchTokenStats", fetchTokenStats);
+    const tokensByLanguage = await runStatQuery(
+      "fetchTokensByLanguage",
+      fetchTokensByLanguage,
+    );
+    const topUsers = await runStatQuery("fetchTopUsers", fetchTopUsers);
+    const worksheetStats = await runStatQuery(
+      "fetchWorksheetStats",
+      fetchWorksheetStats,
+    );
+    const costStats = await runStatQuery("fetchCostStats", fetchCostStats);
+    const templatesByDay = await runStatQuery(
+      "fetchTemplatesByDay",
+      fetchTemplatesByDay,
+    );
+    const topSubjectTopicPairs = await runStatQuery(
+      "fetchTopSubjectTopicPairs",
+      fetchTopSubjectTopicPairs,
+    );
+    const templatesPerUser = await runStatQuery(
+      "fetchTemplatesPerUser",
+      fetchTemplatesPerUser,
+    );
+    const gradeLevelBySubject = await runStatQuery(
+      "fetchGradeLevelBySubject",
+      fetchGradeLevelBySubject,
+    );
+    const cacheHitRate = await runStatQuery(
+      "fetchCacheHitRate",
+      fetchCacheHitRate,
+    );
 
-  return {
-    totalTranslations: total,
-    translationsToday,
-    successRate:
-      total > 0 ? Math.round((successful / total) * 10000) / 100 : null,
-    byLanguage,
-    byModel,
-    averageLatencyMs: total > 0 ? averageLatencyMs : null,
-    ...tokenStats,
-    tokensByLanguage,
-    topUsers,
-    cacheHitRate,
-    worksheetStats,
-    ...costStats,
-    templatesByDay,
-    topSubjectTopicPairs,
-    templatesPerUser,
-    gradeLevelBySubject,
-  };
+    const stats: TranslationStats = {
+      totalTranslations: total,
+      translationsToday,
+      successRate:
+        total > 0 ? Math.round((successful / total) * 10000) / 100 : null,
+      byLanguage,
+      byModel,
+      averageLatencyMs: total > 0 ? averageLatencyMs : null,
+      ...tokenStats,
+      tokensByLanguage,
+      topUsers,
+      cacheHitRate,
+      worksheetStats,
+      ...costStats,
+      templatesByDay,
+      topSubjectTopicPairs,
+      templatesPerUser,
+      gradeLevelBySubject,
+    };
+
+    translationStatsCache = {
+      value: stats,
+      expiresAt: Date.now() + STATS_CACHE_MS,
+    };
+
+    logInfo("translation_stats_cache_stored", {
+      ttlMs: STATS_CACHE_MS,
+    });
+
+    return stats;
+  })();
+
+  try {
+    return await translationStatsInFlight;
+  } finally {
+    translationStatsInFlight = null;
+  }
 }
 
 export async function getLogsByDateRange(

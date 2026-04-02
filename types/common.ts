@@ -73,15 +73,10 @@ export type PdfUploadStatus = "uploaded" | "failed" | "skipped";
 
 export interface LogPdfUploadParams {
   userId?: number | null;
-  flow: string;
-  fieldName: string;
-  originalName: string;
-  mimeType: string;
-  sizeBytes: number;
-  bucketName?: string | null;
+  originalName?: string | null;
+  sizeBytes?: number | null;
   objectKey?: string | null;
   status: PdfUploadStatus;
-  errorMessage?: string | null;
-  contentHash?: string | null;
+  contentHash: string;
   reusedExisting?: boolean;
 }

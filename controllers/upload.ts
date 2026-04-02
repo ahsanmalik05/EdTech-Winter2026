@@ -125,16 +125,12 @@ export const uploadPdfFile = async (req: Request, res: Response) => {
     try {
       await recordPdfUpload({
         userId,
-        flow: "pdf",
-        fieldName: req.file.fieldname,
         contentHash,
         originalName: req.file.originalname,
-        mimeType: req.file.mimetype,
         sizeBytes: req.file.size ?? fs.statSync(filePath).size,
         objectKey,
         status: objectKey ? "uploaded" : uploadStatus,
         reusedExisting,
-        errorMessage: uploadErrorMessage,
       });
     } catch (err) {
       console.error("Failed to record PDF upload:", err);
@@ -299,16 +295,12 @@ export const uploadPdfFileStream = async (req: Request, res: Response) => {
     try {
       await recordPdfUpload({
         userId,
-        flow: "pdf_stream",
-        fieldName: req.file.fieldname,
         contentHash,
         originalName: req.file.originalname,
-        mimeType: req.file.mimetype,
         sizeBytes: req.file.size ?? fs.statSync(filePath).size,
         objectKey,
         status: objectKey ? "uploaded" : uploadStatus,
         reusedExisting,
-        errorMessage: uploadErrorMessage,
       });
     } catch (err) {
       console.error("Failed to record PDF upload:", err);

@@ -84,16 +84,12 @@ export const batchTranslate = async (req: Request, res: Response) => {
       try {
         await recordPdfUpload({
           userId,
-          flow: "batch",
-          fieldName: file.fieldname,
           contentHash,
           originalName: file.originalname,
-          mimeType: file.mimetype,
           sizeBytes: file.size ?? fs.statSync(file.path).size,
           objectKey,
           status: objectKey ? "uploaded" : uploadStatus,
           reusedExisting,
-          errorMessage: uploadErrorMessage,
         });
       } catch (err) {
         console.error("Failed to record batch PDF upload:", err);
@@ -259,16 +255,12 @@ export const batchTranslateStream = async (req: Request, res: Response) => {
       try {
         await recordPdfUpload({
           userId,
-          flow: "batch_stream",
-          fieldName: file.fieldname,
           contentHash,
           originalName: fileName,
-          mimeType: file.mimetype,
           sizeBytes: file.size ?? fs.statSync(file.path).size,
           objectKey,
           status: objectKey ? "uploaded" : uploadStatus,
           reusedExisting,
-          errorMessage: uploadErrorMessage,
         });
       } catch (err) {
         console.error("Failed to record batch stream PDF upload:", err);
