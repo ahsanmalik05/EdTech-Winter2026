@@ -17,6 +17,7 @@ import type {
 } from "../types/common.js";
 import type { TranslationLog } from "../db/schema.js";
 import { calculateCost } from "../utils/cost.js";
+import { elapsedMs, logError, logInfo } from "../utils/observability.js";
 
 async function resolveLanguageName(targetLanguage: string): Promise<string> {
   const trimmed = targetLanguage.trim();
@@ -332,6 +333,28 @@ async function fetchCacheHitRate(): Promise<number | null> {
 }
 
 export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
+  const runStatQuery = async <T>(
+    name: string,
+    fn: () => Promise<T>,
+  ): Promise<T> => {
+    const startedAt = Date.now();
+    logInfo("translation_stats_query_started", { query: name });
+    try {
+      const result = await fn();
+      logInfo("translation_stats_query_finished", {
+        query: name,
+        durationMs: elapsedMs(startedAt),
+      });
+      return result;
+    } catch (error) {
+      logError("translation_stats_query_failed", error, {
+        query: name,
+        durationMs: elapsedMs(startedAt),
+      });
+      throw error;
+    }
+  };
+
   const [
     total,
     translationsToday,
@@ -350,22 +373,22 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
     gradeLevelBySubject,
     cacheHitRate,
   ] = await Promise.all([
-    fetchTotalCount(),
-    fetchTodayCount(),
-    fetchSuccessCount(),
-    fetchByLanguage(),
-    fetchByModel(),
-    fetchAverageLatency(),
-    fetchTokenStats(),
-    fetchTokensByLanguage(),
-    fetchTopUsers(),
-    fetchWorksheetStats(),
-    fetchCostStats(),
-    fetchTemplatesByDay(),
-    fetchTopSubjectTopicPairs(),
-    fetchTemplatesPerUser(),
-    fetchGradeLevelBySubject(),
-    fetchCacheHitRate(),
+    runStatQuery("fetchTotalCount", fetchTotalCount),
+    runStatQuery("fetchTodayCount", fetchTodayCount),
+    runStatQuery("fetchSuccessCount", fetchSuccessCount),
+    runStatQuery("fetchByLanguage", fetchByLanguage),
+    runStatQuery("fetchByModel", fetchByModel),
+    runStatQuery("fetchAverageLatency", fetchAverageLatency),
+    runStatQuery("fetchTokenStats", fetchTokenStats),
+    runStatQuery("fetchTokensByLanguage", fetchTokensByLanguage),
+    runStatQuery("fetchTopUsers", fetchTopUsers),
+    runStatQuery("fetchWorksheetStats", fetchWorksheetStats),
+    runStatQuery("fetchCostStats", fetchCostStats),
+    runStatQuery("fetchTemplatesByDay", fetchTemplatesByDay),
+    runStatQuery("fetchTopSubjectTopicPairs", fetchTopSubjectTopicPairs),
+    runStatQuery("fetchTemplatesPerUser", fetchTemplatesPerUser),
+    runStatQuery("fetchGradeLevelBySubject", fetchGradeLevelBySubject),
+    runStatQuery("fetchCacheHitRate", fetchCacheHitRate),
   ]);
 
   return {
