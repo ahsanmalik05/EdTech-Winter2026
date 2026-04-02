@@ -51,18 +51,11 @@ const config: Config = {
     generation: "gpt-5-nano",
   },
   appBaseUrl: process.env.APP_BASE_URL || "http://localhost:3000",
-<<<<<<< HEAD
   resendApiKey: process.env.RESEND_API_KEY || "",
   mailFrom:
     process.env.MAIL_FROM?.trim() ||
     "METY <onboarding@resend.dev>",
-=======
-  smtpHost: process.env.SMTP_HOST || "",
-  smtpPort: Number(process.env.SMTP_PORT) || 587,
-  smtpSecure: String(process.env.SMTP_SECURE || "false") === "true",
-  smtpUser: process.env.SMTP_USER || "",
-  smtpPass: process.env.SMTP_PASS || "",
-  mailFrom: process.env.MAIL_FROM || process.env.SMTP_USER || "",
+
   bucket: {
     name: process.env.BUCKET || "",
     endpoint: process.env.ENDPOINT || "",
@@ -70,7 +63,6 @@ const config: Config = {
     accessKeyId: process.env.ACCESS_KEY_ID || "",
     secretAccessKey: process.env.SECRET_ACCESS_KEY || "",
   },
->>>>>>> 3689704530f89eb0ebfdc13aaed9986fc68f7cf3
 };
 
 export default config;
