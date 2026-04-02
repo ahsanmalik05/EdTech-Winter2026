@@ -1,118 +1,274 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Request, Response } from "express";
 
-const { mockExtract, mockDelete, mockTranslate, mockTranslateStream } = vi.hoisted(() => ({
-  mockExtract: vi.fn(),
+const {
+  mockExtractStructured,
+  mockBlocksToText,
+  mockDelete,
+  mockTranslate,
+  mockTranslateStream,
+  mockValidateTranslation,
+  mockLogTranslation,
+  mockLogTranslationValidation,
+  mockComputeFileHash,
+  mockComputeTextHash,
+  mockUploadToBucket,
+  mockFindUploadedByHash,
+  mockRecordPdfUpload,
+  mockGetOrCreateSourceDocument,
+  mockFindCachedTranslation,
+} = vi.hoisted(() => ({
+  mockExtractStructured: vi.fn(),
+  mockBlocksToText: vi.fn(),
   mockDelete: vi.fn(),
   mockTranslate: vi.fn(),
   mockTranslateStream: vi.fn(),
+  mockValidateTranslation: vi.fn(),
+  mockLogTranslation: vi.fn(),
+  mockLogTranslationValidation: vi.fn(),
+  mockComputeFileHash: vi.fn(),
+  mockComputeTextHash: vi.fn(),
+  mockUploadToBucket: vi.fn(),
+  mockFindUploadedByHash: vi.fn(),
+  mockRecordPdfUpload: vi.fn(),
+  mockGetOrCreateSourceDocument: vi.fn(),
+  mockFindCachedTranslation: vi.fn(),
 }));
 
-vi.mock('../../services/pdf.js', () => ({
-  extractTextFromPdf: (...a: any[]) => mockExtract(...a),
-  deleteFile: (...a: any[]) => mockDelete(...a),
-}));
-vi.mock('../../services/cohere.js', () => ({
-  translateContent: (...a: any[]) => mockTranslate(...a),
-  translateContentStream: (...a: any[]) => mockTranslateStream(...a),
+vi.mock("../../services/pdf.js", () => ({
+  extractStructuredTextFromPdf: (...args: unknown[]) =>
+    mockExtractStructured(...args),
+  blocksToText: (...args: unknown[]) => mockBlocksToText(...args),
+  deleteFile: (...args: unknown[]) => mockDelete(...args),
 }));
 
-import { uploadPdfFile, uploadPdfFileStream } from '../../controllers/upload.js';
-import type { Request, Response } from 'express';
+vi.mock("../../services/cohere.js", () => ({
+  translateContent: (...args: unknown[]) => mockTranslate(...args),
+  translateContentStream: (...args: unknown[]) => mockTranslateStream(...args),
+}));
 
-function mockReq(o: Partial<Request> = {}): Request {
-  return { body: {}, file: undefined, ...o } as unknown as Request;
+vi.mock("../../services/validate.js", () => ({
+  validateTranslation: (...args: unknown[]) => mockValidateTranslation(...args),
+}));
+
+vi.mock("../../services/translation_log.js", () => ({
+  logTranslation: (...args: unknown[]) => mockLogTranslation(...args),
+}));
+
+vi.mock("../../services/translation_validation_log.js", () => ({
+  logTranslationValidation: (...args: unknown[]) =>
+    mockLogTranslationValidation(...args),
+}));
+
+vi.mock("../../services/bucket.js", () => ({
+  computeFileHash: (...args: unknown[]) => mockComputeFileHash(...args),
+  computeTextHash: (...args: unknown[]) => mockComputeTextHash(...args),
+  isBucketConfigured: () => true,
+  uploadToBucket: (...args: unknown[]) => mockUploadToBucket(...args),
+}));
+
+vi.mock("../../services/pdf_uploads.js", () => ({
+  findUploadedByHash: (...args: unknown[]) => mockFindUploadedByHash(...args),
+  recordPdfUpload: (...args: unknown[]) => mockRecordPdfUpload(...args),
+}));
+
+vi.mock("../../services/translation_cache.js", () => ({
+  getOrCreateSourceDocument: (...args: unknown[]) =>
+    mockGetOrCreateSourceDocument(...args),
+  findCachedTranslation: (...args: unknown[]) =>
+    mockFindCachedTranslation(...args),
+}));
+
+import { uploadPdfFile, uploadPdfFileStream } from "../../controllers/upload.js";
+
+function mockReq(overrides: Partial<Request> = {}): Request {
+  return {
+    body: {},
+    file: undefined,
+    user: undefined,
+    apiKey: undefined,
+    ...overrides,
+  } as Request;
 }
+
 function mockRes() {
-  const r: any = {};
-  r.status = vi.fn().mockReturnValue(r);
-  r.json = vi.fn().mockReturnValue(r);
-  r.setHeader = vi.fn().mockReturnValue(r);
-  r.write = vi.fn().mockReturnValue(true);
-  r.end = vi.fn();
-  return r as Response;
+  const res: Partial<Response> & { write: ReturnType<typeof vi.fn> } = {
+    status: vi.fn(),
+    json: vi.fn(),
+    setHeader: vi.fn(),
+    write: vi.fn(),
+    end: vi.fn(),
+  };
+  (res.status as ReturnType<typeof vi.fn>).mockReturnValue(res);
+  (res.json as ReturnType<typeof vi.fn>).mockReturnValue(res);
+  (res.setHeader as ReturnType<typeof vi.fn>).mockReturnValue(res);
+  return res as Response & { write: ReturnType<typeof vi.fn> };
 }
 
-describe('uploadPdfFile', () => {
-  beforeEach(() => vi.clearAllMocks());
+function makeFile() {
+  return {
+    path: "/tmp/test.pdf",
+    originalname: "test.pdf",
+    fieldname: "pdf",
+    mimetype: "application/pdf",
+    size: 123,
+  } as Express.Multer.File;
+}
 
-  it('400 when no file', async () => {
+const blocks = [{ type: "paragraph", content: "Hello", indent: 0 }];
+
+describe("uploadPdfFile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockComputeFileHash.mockResolvedValue("file-hash");
+    mockComputeTextHash.mockReturnValue("text-hash");
+    mockFindUploadedByHash.mockResolvedValue(null);
+    mockUploadToBucket.mockResolvedValue({
+      objectKey: "pdf-archives/dev/file-hash.pdf",
+      uploaded: true,
+    });
+    mockRecordPdfUpload.mockResolvedValue(1);
+    mockExtractStructured.mockResolvedValue(blocks);
+    mockBlocksToText.mockReturnValue("Hello");
+    mockGetOrCreateSourceDocument.mockResolvedValue({ id: 10, textHash: "text-hash" });
+    mockFindCachedTranslation.mockResolvedValue(null);
+    mockTranslate.mockResolvedValue({
+      data: { translatedText: "Bonjour", notes: "ok" },
+      tokenCount: 7,
+    });
+    mockValidateTranslation.mockResolvedValue({
+      backTranslated: "Hello",
+      similarityScore: 0.9,
+      similarityReasoning: "close",
+      structuralChecks: {
+        sectionCountMatch: true,
+        originalSectionCount: 1,
+        translatedSectionCount: 1,
+        headersIntact: true,
+      },
+      overallConfidence: 0.95,
+    });
+    mockLogTranslation.mockResolvedValue(99);
+    mockLogTranslationValidation.mockResolvedValue(undefined);
+    mockDelete.mockResolvedValue(undefined);
+  });
+
+  it("returns 400 when no file is provided", async () => {
     const res = mockRes();
+
     await uploadPdfFile(mockReq(), res);
+
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: "No PDF file uploaded" });
   });
 
-  it('422 when text empty', async () => {
-    mockExtract.mockResolvedValue('   ');
-    mockDelete.mockResolvedValue(undefined);
+  it("returns 422 when extracted text is empty", async () => {
+    mockBlocksToText.mockReturnValue("   ");
     const res = mockRes();
-    await uploadPdfFile(mockReq({ file: { path: '/t.pdf', originalname: 't.pdf' } as any }), res);
+
+    await uploadPdfFile(mockReq({ file: makeFile() }), res);
+
     expect(res.status).toHaveBeenCalledWith(422);
-    expect(mockDelete).toHaveBeenCalled();
+    expect(mockRecordPdfUpload).toHaveBeenCalled();
+    expect(mockDelete).toHaveBeenCalledWith("/tmp/test.pdf");
   });
 
-  it('200 on success', async () => {
-    mockExtract.mockResolvedValue('Hello');
-    mockTranslate.mockResolvedValue('Bonjour');
-    mockDelete.mockResolvedValue(undefined);
+  it("returns translated text on success", async () => {
+    mockBlocksToText
+      .mockReturnValueOnce("Hello")
+      .mockReturnValueOnce("Bonjour");
+
     const res = mockRes();
-    await uploadPdfFile(mockReq({ file: { path: '/t.pdf', originalname: 't.pdf' } as any, body: { language: 'French' } }), res);
+
+    await uploadPdfFile(
+      mockReq({ file: makeFile(), body: { language: "French" } }),
+      res,
+    );
+
+    expect(mockRecordPdfUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flow: "pdf",
+        fieldName: "pdf",
+        contentHash: "file-hash",
+        reusedExisting: false,
+      }),
+    );
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ originalName: 't.pdf', targetLanguage: 'French', extractedText: 'Hello', translatedText: 'Bonjour' });
-  });
-
-  it('defaults to French', async () => {
-    mockExtract.mockResolvedValue('Hi');
-    mockTranslate.mockResolvedValue('Salut');
-    mockDelete.mockResolvedValue(undefined);
-    const res = mockRes();
-    await uploadPdfFile(mockReq({ file: { path: '/t.pdf', originalname: 't.pdf' } as any, body: {} }), res);
-    expect(mockTranslate).toHaveBeenCalledWith('Hi', 'French');
-  });
-
-  it('500 on error, still deletes', async () => {
-    mockExtract.mockRejectedValue(new Error('fail'));
-    mockDelete.mockResolvedValue(undefined);
-    const res = mockRes();
-    await uploadPdfFile(mockReq({ file: { path: '/t.pdf', originalname: 't.pdf' } as any }), res);
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(mockDelete).toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({
+      originalName: "test.pdf",
+      targetLanguage: "French",
+      extractedText: "Hello",
+      translatedText: "Bonjour",
+    });
   });
 });
 
-describe('uploadPdfFileStream', () => {
-  beforeEach(() => vi.clearAllMocks());
+describe("uploadPdfFileStream", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockComputeFileHash.mockResolvedValue("file-hash");
+    mockComputeTextHash.mockReturnValue("text-hash");
+    mockFindUploadedByHash.mockResolvedValue(null);
+    mockUploadToBucket.mockResolvedValue({
+      objectKey: "pdf-archives/dev/file-hash.pdf",
+      uploaded: true,
+    });
+    mockRecordPdfUpload.mockResolvedValue(1);
+    mockExtractStructured.mockResolvedValue(blocks);
+    mockBlocksToText.mockReturnValue("Hello");
+    mockGetOrCreateSourceDocument.mockResolvedValue({ id: 10, textHash: "text-hash" });
+    mockFindCachedTranslation.mockResolvedValue(null);
+    mockTranslate.mockResolvedValue({
+      data: { translatedText: "Bonjour", notes: "ok" },
+      tokenCount: 5,
+    });
+    mockTranslateStream.mockImplementation(
+      async (_text: string, _lang: string, onToken: (token: string) => void) => {
+        onToken("Bonjour");
+        return { tokenCount: 5 };
+      },
+    );
+    mockDelete.mockResolvedValue(undefined);
+  });
 
-  it('error event when no file', async () => {
+  it("emits an error event when no file is provided", async () => {
     const res = mockRes();
+
     await uploadPdfFileStream(mockReq(), res);
-    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: error'));
+
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining("event: error"));
     expect(res.end).toHaveBeenCalled();
   });
 
-  it('error event when text empty', async () => {
-    mockExtract.mockResolvedValue('   ');
-    mockDelete.mockResolvedValue(undefined);
+  it("emits an error event when extracted text is empty", async () => {
+    mockBlocksToText.mockReturnValue("   ");
     const res = mockRes();
-    await uploadPdfFileStream(mockReq({ file: { path: '/t.pdf', originalname: 't.pdf' } as any }), res);
-    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: error'));
+
+    await uploadPdfFileStream(mockReq({ file: makeFile() }), res);
+
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining("event: error"));
+    expect(mockDelete).toHaveBeenCalledWith("/tmp/test.pdf");
   });
 
-  it('complete event on success', async () => {
-    mockExtract.mockResolvedValue('Hello');
-    mockTranslateStream.mockImplementation(async (_t: string, _l: string, cb: (t: string) => void) => { cb('Bonjour'); });
-    mockDelete.mockResolvedValue(undefined);
-    const res = mockRes();
-    await uploadPdfFileStream(mockReq({ file: { path: '/t.pdf', originalname: 't.pdf' } as any, body: { language: 'French' } }), res);
-    const w = (res.write as any).mock.calls.map((c: any[]) => c[0]);
-    expect(w.some((s: string) => s.includes('event: complete'))).toBe(true);
-  });
+  it("emits complete on success", async () => {
+    mockBlocksToText
+      .mockReturnValueOnce("Hello")
+      .mockReturnValueOnce("Bonjour");
 
-  it('error event on failure, deletes file', async () => {
-    mockExtract.mockRejectedValue(new Error('fail'));
-    mockDelete.mockResolvedValue(undefined);
     const res = mockRes();
-    await uploadPdfFileStream(mockReq({ file: { path: '/t.pdf', originalname: 't.pdf' } as any }), res);
-    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: error'));
-    expect(mockDelete).toHaveBeenCalled();
+
+    await uploadPdfFileStream(
+      mockReq({ file: makeFile(), body: { language: "French" } }),
+      res,
+    );
+
+    const writes = res.write.mock.calls.map(([value]) => String(value));
+    expect(writes.some((value) => value.includes("event: complete"))).toBe(true);
+    expect(mockRecordPdfUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flow: "pdf_stream",
+        contentHash: "file-hash",
+      }),
+    );
   });
 });

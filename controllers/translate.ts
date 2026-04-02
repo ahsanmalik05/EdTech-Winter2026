@@ -6,12 +6,13 @@ import {
 } from "../services/translation_log.js";
 
 const DEFAULT_MODEL = "command-a-translate-08-2025";
-import {
-  archiveUploadedPdf,
-  getRequestUserId,
-} from "../services/pdf_upload.js";
 import { extractTextFromPdf, deleteFile } from "../services/pdf.js";
-import { computeFileHash, computeTextHash, uploadToBucket } from "../services/bucket.js";
+import {
+  computeFileHash,
+  computeTextHash,
+  isBucketConfigured,
+  uploadToBucket,
+} from "../services/bucket.js";
 import { findUploadedByHash, recordPdfUpload } from "../services/pdf_uploads.js";
 import {
   getOrCreateSourceDocument,
@@ -46,16 +47,6 @@ export const batchTranslate = async (req: Request, res: Response) => {
       return;
     }
 
-    await Promise.all(
-      files.map((file) =>
-        archiveUploadedPdf({
-          file,
-          flow: "batch",
-          userId: getRequestUserId(req),
-        }),
-      ),
-    );
-
     const start = Date.now();
     const items: { id: string; text: string; sourceTextHash: string; sourceDocumentId?: number | undefined }[] = [];
     const cachedResults: Record<string, { data: { translatedText: string; notes: string } | null; tokenCount?: number | null; inputTokenCount?: number | null; outputTokenCount?: number | null }> = {};
@@ -63,14 +54,18 @@ export const batchTranslate = async (req: Request, res: Response) => {
 
     for (const file of files) {
       const contentHash = await computeFileHash(file.path);
-      const fileSize = fs.statSync(file.path).size;
-      const userId = req.apiKey?.user_id;
+      const userId = req.user?.id ?? req.apiKey?.user_id;
 
       const existingUpload = await findUploadedByHash(contentHash);
       let objectKey: string | undefined;
       let reusedExisting = false;
+      let uploadStatus: "uploaded" | "failed" | "skipped" = "uploaded";
+      let uploadErrorMessage: string | undefined;
 
-      if (existingUpload) {
+      if (!isBucketConfigured()) {
+        uploadStatus = "skipped";
+        uploadErrorMessage = "Railway bucket configuration is incomplete";
+      } else if (existingUpload) {
         objectKey = existingUpload.objectKey;
         reusedExisting = true;
       } else {
@@ -80,18 +75,25 @@ export const batchTranslate = async (req: Request, res: Response) => {
           reusedExisting = !result.uploaded;
         } catch (err) {
           console.error("Bucket upload failed for batch file:", err);
+          uploadStatus = "failed";
+          uploadErrorMessage =
+            err instanceof Error ? err.message : "Bucket upload failed";
         }
       }
 
       try {
         await recordPdfUpload({
           userId,
+          flow: "batch",
+          fieldName: file.fieldname,
           contentHash,
           originalName: file.originalname,
+          mimeType: file.mimetype,
+          sizeBytes: file.size ?? fs.statSync(file.path).size,
           objectKey,
-          fileSizeBytes: fileSize,
-          status: objectKey ? "uploaded" : "failed",
+          status: objectKey ? "uploaded" : uploadStatus,
           reusedExisting,
+          errorMessage: uploadErrorMessage,
         });
       } catch (err) {
         console.error("Failed to record batch PDF upload:", err);
@@ -221,30 +223,24 @@ export const batchTranslateStream = async (req: Request, res: Response) => {
       return res.end();
     }
 
-    await Promise.all(
-      files.map((file) =>
-        archiveUploadedPdf({
-          file,
-          flow: "batch_stream",
-          userId: getRequestUserId(req),
-        }),
-      ),
-    );
-
     sendEvent("status", { total: files.length });
 
     const tasks = files.map(async (file) => {
       const fileName = file.originalname;
 
       const contentHash = await computeFileHash(file.path);
-      const fileSize = fs.statSync(file.path).size;
-      const userId = req.apiKey?.user_id;
+      const userId = req.user?.id ?? req.apiKey?.user_id;
 
       const existingUpload = await findUploadedByHash(contentHash);
       let objectKey: string | undefined;
       let reusedExisting = false;
+      let uploadStatus: "uploaded" | "failed" | "skipped" = "uploaded";
+      let uploadErrorMessage: string | undefined;
 
-      if (existingUpload) {
+      if (!isBucketConfigured()) {
+        uploadStatus = "skipped";
+        uploadErrorMessage = "Railway bucket configuration is incomplete";
+      } else if (existingUpload) {
         objectKey = existingUpload.objectKey;
         reusedExisting = true;
       } else {
@@ -254,18 +250,25 @@ export const batchTranslateStream = async (req: Request, res: Response) => {
           reusedExisting = !result.uploaded;
         } catch (err) {
           console.error("Bucket upload failed for batch stream file:", err);
+          uploadStatus = "failed";
+          uploadErrorMessage =
+            err instanceof Error ? err.message : "Bucket upload failed";
         }
       }
 
       try {
         await recordPdfUpload({
           userId,
+          flow: "batch_stream",
+          fieldName: file.fieldname,
           contentHash,
           originalName: fileName,
+          mimeType: file.mimetype,
+          sizeBytes: file.size ?? fs.statSync(file.path).size,
           objectKey,
-          fileSizeBytes: fileSize,
-          status: objectKey ? "uploaded" : "failed",
+          status: objectKey ? "uploaded" : uploadStatus,
           reusedExisting,
+          errorMessage: uploadErrorMessage,
         });
       } catch (err) {
         console.error("Failed to record batch stream PDF upload:", err);
