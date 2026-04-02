@@ -4,9 +4,9 @@ import cookieParser from 'cookie-parser';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sql } from "drizzle-orm";
 import config from './config/config.js';
 import { db } from './db/index.js';
-import { users } from './db/schema.js';
 
 import authRouter from './routes/auth.js';
 import apiKeysRouter from './routes/api_key.js';
@@ -21,6 +21,15 @@ import templatesRouter from './routes/templates.js';
 import translationLogRouter from './routes/translation_log.js';
 import templateGenerationLogRouter from './routes/template_generation_log.js';
 import type { CohereResponse, ErrorResponse } from './types/response.js';
+import {
+    createRequestId,
+    elapsedMs,
+    hasApiKeyHeader,
+    hasCookieHeader,
+    logError,
+    logInfo,
+    logWarn,
+} from './utils/observability.js';
 const { port, nodeEnv, frontendUrl } = config;
 const allowedOrigins = [frontendUrl, 'http://localhost:3000'];
 if (nodeEnv === 'development') {
@@ -47,6 +56,60 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+
+app.use((req, res, next) => {
+    if (!req.originalUrl.startsWith('/api')) {
+        next();
+        return;
+    }
+
+    req.requestId = createRequestId();
+    const startedAt = Date.now();
+
+    logInfo('request_started', {
+        requestId: req.requestId,
+        method: req.method,
+        path: req.originalUrl,
+        hasApiKey: hasApiKeyHeader(req),
+        hasCookie: hasCookieHeader(req),
+        origin: req.headers.origin ?? null,
+    });
+
+    const slowRequestTimer = setTimeout(() => {
+        logWarn('request_slow', {
+            requestId: req.requestId,
+            method: req.method,
+            path: req.originalUrl,
+            durationMs: elapsedMs(startedAt),
+            headersSent: res.headersSent,
+        });
+    }, 10000);
+
+    res.on('finish', () => {
+        clearTimeout(slowRequestTimer);
+        logInfo('request_finished', {
+            requestId: req.requestId,
+            method: req.method,
+            path: req.originalUrl,
+            statusCode: res.statusCode,
+            durationMs: elapsedMs(startedAt),
+        });
+    });
+
+    res.on('close', () => {
+        clearTimeout(slowRequestTimer);
+        if (!res.writableEnded) {
+            logWarn('request_closed_early', {
+                requestId: req.requestId,
+                method: req.method,
+                path: req.originalUrl,
+                durationMs: elapsedMs(startedAt),
+            });
+        }
+    });
+
+    next();
+});
 
 app.use('/api', apiKeyMiddleware);
 
@@ -86,6 +149,24 @@ if (fs.existsSync(frontendIndexPath)) {
 }
 
 async function start() {
+    const dbProbeStartedAt = Date.now();
+    logInfo('startup_db_probe_started', {});
+    try {
+        await Promise.race([
+            db.execute(sql`select 1 as ok`),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Startup DB probe timed out after 5000ms')), 5000),
+            ),
+        ]);
+        logInfo('startup_db_probe_finished', {
+            durationMs: elapsedMs(dbProbeStartedAt),
+        });
+    } catch (error) {
+        logError('startup_db_probe_failed', error, {
+            durationMs: elapsedMs(dbProbeStartedAt),
+        });
+    }
+
     const termCount = await loadGlossaryCache();
     console.log(`Glossary cache loaded: ${termCount} terms`);
 
@@ -107,6 +188,14 @@ async function start() {
             console.warn('Glossary cache warmup failed', error);
         });
 }
+
+process.on('SIGTERM', () => {
+    logWarn('process_sigterm_received', {});
+});
+
+process.on('SIGINT', () => {
+    logWarn('process_sigint_received', {});
+});
 
 start();
 
