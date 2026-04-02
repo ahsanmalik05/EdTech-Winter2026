@@ -4,12 +4,7 @@ const knowledgeTypeAssessment = z.object({
   content: z
     .string()
     .describe(
-      "The student's narrative self-assessment of this knowledge type, written in first person as a student thinking aloud. Must include realistic gaps and uncertainties, not perfect textbook answers.",
-    ),
-  gaps: z
-    .array(z.string())
-    .describe(
-      'Specific things the student is unsure about or cannot remember for this knowledge type (e.g., "I don\'t remember whether subtraction always comes before addition").',
+      "The student's final narrative self-assessment for this knowledge type, written in first person as a student thinking aloud. Must be prose only, with realistic gaps and uncertainties woven naturally into the writing. Do not include labels, field names, metadata, JSON, arrays, or text such as 'gaps:'.",
     ),
 });
 
