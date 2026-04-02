@@ -1,10 +1,14 @@
 // controllers/validate.ts
 import type { Request, Response } from 'express';
 import config from '../config/config.js';
-import { extractTextFromPdf, deleteFile } from '../services/pdf.js';
+import { extractTextFromPdf, deleteLocalFile } from '../services/pdf.js';
 import { validateTranslation } from '../services/validate.js';
 import { logTranslation } from '../services/translation_log.js';
 import { logTranslationValidation } from '../services/translation_validation_log.js';
+import {
+  archiveUploadedPdf,
+  getRequestUserId,
+} from '../services/pdf_upload.js';
 
 export const validateTranslationHandler = async (
   req: Request,
@@ -16,7 +20,7 @@ export const validateTranslationHandler = async (
     return res.status(400).json({ error: 'targetLanguage is required and must be a string' });
   }
 
-  const files = (req as any).files as Record<string, { path: string }[]> | undefined;
+  const files = (req as any).files as Record<string, Express.Multer.File[]> | undefined;
   const originalFile = files?.['original']?.[0];
   const translatedFile = files?.['translated']?.[0];
 
@@ -28,6 +32,19 @@ export const validateTranslationHandler = async (
   }
 
   try {
+    await Promise.all([
+      archiveUploadedPdf({
+        file: originalFile,
+        flow: 'validate',
+        userId: getRequestUserId(req),
+      }),
+      archiveUploadedPdf({
+        file: translatedFile,
+        flow: 'validate',
+        userId: getRequestUserId(req),
+      }),
+    ]);
+
     const [originalText, translatedText] = await Promise.all([
       extractTextFromPdf(originalFile.path),
       extractTextFromPdf(translatedFile.path),
@@ -81,8 +98,8 @@ export const validateTranslationHandler = async (
     return res.status(500).json({ error: 'Failed to validate translation' });
   } finally {
     await Promise.all([
-      deleteFile(originalFile.path),
-      deleteFile(translatedFile.path),
+      deleteLocalFile(originalFile.path),
+      deleteLocalFile(translatedFile.path),
     ]);
   }
 };

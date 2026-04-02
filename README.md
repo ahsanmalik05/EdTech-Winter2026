@@ -9,17 +9,30 @@ http://localhost:3000
 
 Most API endpoints require authentication using one of two methods:
 
-### 1. Bearer Token (JWT)
-Include in request header:
-```
-Authorization: Bearer <jwt_token>
-```
+### 1. Session cookie (JWT)
+
+After a successful login, the API sets an `httpOnly` cookie named `token`. The browser sends it automatically on same-site requests when credentials are included (for example `fetch(..., { credentials: 'include' })`).
 
 ### 2. API Key
 Include in request header:
 ```
 x-api-key: <api_key>
 ```
+
+---
+
+## Environment variables (email)
+
+Verification emails are sent with [Resend](https://resend.com) over HTTPS (SMTP is not used).
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `RESEND_API_KEY` | Yes (for sending mail) | API key from the Resend dashboard. Without it, `sendVerificationEmail` fails (registration still completes; explicit resend returns 500). |
+| `MAIL_FROM` | No | Sender address. Defaults to `METY <onboarding@resend.dev>`. |
+
+**Sandbox / testing:** Addresses on `@resend.dev` (including the default above) are for testing only. Resend only delivers to the account owner’s email until you verify a custom domain. The server logs a warning at startup when `MAIL_FROM` contains `@resend.dev`.
+
+Other required configuration includes `JWT_SECRET` (min 32 characters) and `DATABASE_URL`; see your deployment platform or local `.env`.
 
 ---
 
@@ -65,14 +78,18 @@ Create a new user account
 {
   "user": {
     "id": 1,
-    "email": "user@example.com"
+    "email": "user@example.com",
+    "emailVerified": false
   },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "message": "Registration successful. Please verify your email before logging in.",
+  "verificationRequired": true
 }
 ```
 
+A verification link is emailed when `RESEND_API_KEY` and `MAIL_FROM` are configured and Resend accepts the send. If the send fails after the user is created, the response is still `201` with the same shape; use `POST /api/auth/resend-verification` to try again.
+
 ### 2. Login User
-Authenticate and receive JWT token
+Authenticate. On success, the server sets an `httpOnly` cookie `token` (JWT). The JSON body does not include the token.
 
 **Endpoint:** `POST /api/auth/login`
 
@@ -84,26 +101,61 @@ Authenticate and receive JWT token
 }
 ```
 
-**Response (200):**
+**Response (200)** — email verified:
 ```json
 {
   "user": {
     "id": 1,
     "email": "user@example.com"
-  },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
 }
 ```
 
-### 3. Get Current User
-Retrieve authenticated user information
+**Response (403)** — valid password but email not verified:
+```json
+{
+  "error": "Email is not verified. Please check your inbox.",
+  "verificationRequired": true
+}
+```
+
+### 3. Resend verification email
+
+**Endpoint:** `POST /api/auth/resend-verification`
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200)** — always when the account is missing or already verified (no email enumeration):
+```json
+{
+  "message": "If this account exists, a verification email has been sent."
+}
+```
+
+**Response (200)** — when an unverified account exists and Resend accepts the send:
+```json
+{
+  "message": "Verification email sent."
+}
+```
+
+**Response (500)** — when Resend rejects the send or another server error occurs during resend.
+
+### 4. Verify email (link in email)
+
+**Endpoint:** `GET /api/auth/verify-email?token=<token>`
+
+Redirects to the frontend result page with `status` and optional `message` query parameters.
+
+### 5. Get Current User
+Retrieve authenticated user information. Uses the `token` cookie set at login.
 
 **Endpoint:** `GET /api/auth/me`
-
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
 
 **Response (200):**
 ```json
@@ -111,7 +163,8 @@ Authorization: Bearer <jwt_token>
   "user": {
     "id": 1,
     "email": "user@example.com",
-    "createdAt": "2024-01-15T10:30:00Z"
+    "createdAt": "2024-01-15T10:30:00Z",
+    "emailVerified": true
   }
 }
 ```
@@ -125,10 +178,7 @@ Generate a new API key for programmatic access
 
 **Endpoint:** `POST /api/keys`
 
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
+**Cookies:** `token` (JWT from login), sent automatically when the client uses `credentials: 'include'`.
 
 **Request Body:**
 ```json
@@ -155,10 +205,7 @@ List all API keys for the authenticated user
 
 **Endpoint:** `GET /api/keys`
 
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
+**Cookies:** `token` (JWT from login).
 
 **Response (200):**
 ```json
@@ -203,6 +250,8 @@ Modify an existing API key's label or scopes
 
 **Endpoint:** `PATCH /api/keys/:id`
 
+**Cookies:** `token` (JWT from login).
+
 **Request Body:**
 ```json
 {
@@ -227,10 +276,7 @@ Remove an API key
 
 **Endpoint:** `DELETE /api/keys/:id`
 
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
+**Cookies:** `token` (JWT from login).
 
 **Response (200):**
 ```json
@@ -407,10 +453,11 @@ All endpoints may return error responses in the following format:
 
 ## Authentication Flow
 
-1. **Register/Login** to get a JWT token
-2. **Create an API Key** using your JWT token
-3. **Use API Key** (`x-api-key` header) for subsequent API requests
-4. **JWT tokens expire** after 1 hour - refresh by logging in again
+1. **Register** — receive `201` with `verificationRequired: true` and verify via the email link (or resend).
+2. **Login** — after verification, login sets the `token` cookie; JSON returns `{ user }` only.
+3. **Create an API Key** while authenticated (cookie sent with `credentials: 'include'`).
+4. **Use API Key** (`x-api-key` header) for programmatic API requests.
+5. **JWT cookies expire** after one hour — log in again to refresh.
 
 ---
 

@@ -62,8 +62,21 @@ export const similarityScoreSchema = z.object({
     .describe("One sentence explaining the score"),
 });
 export const normalizedInputSchema = z.object({
-  subject: z.string().describe("The properly capitalized, full (non-abbreviated) subject name. E.g. 'math' → 'Math', 'comp sci' → 'Computer Science', 'Cs' → 'Computer Science', 'Tax Law' → 'Tax Law'."),
-  gradeLevel: z.string().describe("The properly formatted grade level. E.g. '5th grade' → '5th Grade', '10th grade' → '10th Grade', '3' → '3rd Grade', 'PhD' → 'PhD'."),
+  valid: z
+    .boolean()
+    .describe("Whether the provided subject, topic, and grade level look like valid educational inputs."),
+  subject: z
+    .string()
+    .describe("The properly capitalized, full (non-abbreviated) subject name. E.g. 'math' → 'Math', 'comp sci' → 'Computer Science', 'Cs' → 'Computer Science', 'Tax Law' → 'Tax Law'."),
+  topic: z
+    .string()
+    .describe("The properly capitalized topic name. Keep legitimate academic topics, but do not invent one if the input is unclear or invalid."),
+  gradeLevel: z
+    .string()
+    .describe("The properly formatted grade level. E.g. '5th grade' → '5th Grade', '10th grade' → '10th Grade', '3' → '3rd Grade', 'PhD' → 'PhD'."),
+  issues: z
+    .array(z.string())
+    .describe("Validation issues explaining why the input is not a good educational subject/topic/grade-level combination. Empty when valid."),
 });
 
 export type TemplateOutput = z.infer<typeof templateSchema>;

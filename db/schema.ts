@@ -132,6 +132,29 @@ export const translation_log = pgTable("translation_log", {
   outputTokenCount: integer("output_token_count"),
   costUsd: numeric("cost_usd", { precision: 10, scale: 6 }),
   latencyMs: integer("latency_ms").notNull(),
+  sourceTextHash: varchar("source_text_hash", { length: 64 }),
+  sourceDocumentId: integer("source_document_id").references(
+    () => source_documents.id,
+  ),
+  gradeLevel: varchar("grade_level", { length: 100 }),
+  cached: boolean("cached").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const pdf_uploads = pgTable("pdf_uploads", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  flow: varchar("flow", { length: 64 }).notNull(),
+  fieldName: varchar("field_name", { length: 64 }).notNull(),
+  originalName: varchar("original_name", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 255 }).notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  bucketName: varchar("bucket_name", { length: 255 }),
+  objectKey: text("object_key"),
+  status: varchar("status", { length: 32 }).notNull(),
+  errorMessage: text("error_message"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -159,6 +182,8 @@ export type User = InferSelectModel<typeof users>;
 export type ApiKey = InferSelectModel<typeof api_keys>;
 export type TranslationLog = InferSelectModel<typeof translation_log>;
 export type NewTranslationLog = InferInsertModel<typeof translation_log>;
+export type PdfUpload = InferSelectModel<typeof pdf_uploads>;
+export type NewPdfUpload = InferInsertModel<typeof pdf_uploads>;
 export type TemplateGenerationLog = InferSelectModel<
   typeof template_generation_log
 >;
@@ -215,5 +240,35 @@ export type EmailVerificationToken = InferSelectModel<
 export type NewEmailVerificationToken = InferInsertModel<
   typeof email_verification_tokens
 >;
+export const pdfUploadStatus = pgEnum("pdf_upload_status", [
+  "uploaded",
+  "failed",
+  "skipped",
+]);
+
+export const pdf_uploads = pgTable("pdf_uploads", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  contentHash: varchar("content_hash", { length: 64 }).notNull(),
+  originalName: varchar("original_name", { length: 512 }),
+  objectKey: varchar("object_key", { length: 1024 }),
+  fileSizeBytes: integer("file_size_bytes"),
+  status: pdfUploadStatus("status").notNull().default("uploaded"),
+  reusedExisting: boolean("reused_existing").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const source_documents = pgTable("source_documents", {
+  id: serial("id").primaryKey(),
+  textHash: varchar("text_hash", { length: 64 }).notNull().unique(),
+  sourceText: text("source_text").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PdfUpload = InferSelectModel<typeof pdf_uploads>;
+export type NewPdfUpload = InferInsertModel<typeof pdf_uploads>;
+export type SourceDocument = InferSelectModel<typeof source_documents>;
+export type NewSourceDocument = InferInsertModel<typeof source_documents>;
+
 export type NewUser = InferInsertModel<typeof users>;
 export type NewApiKey = InferInsertModel<typeof api_keys>;

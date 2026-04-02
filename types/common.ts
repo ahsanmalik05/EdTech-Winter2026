@@ -16,6 +16,10 @@ export interface LogTranslationParams {
   outputTokenCount: number | undefined;
   costUsd: number | undefined;
   latencyMs: number;
+  sourceTextHash?: string | undefined;
+  sourceDocumentId?: number | undefined;
+  gradeLevel?: string | undefined;
+  cached?: boolean | undefined;
 }
 
 export interface TranslationStats {
@@ -29,7 +33,7 @@ export interface TranslationStats {
   averageTokensPerTranslation: number | null;
   tokensByLanguage: { language: string; totalTokens: number }[];
   topUsers: { userId: number; translations: number }[];
-  cacheHitRate: null;
+  cacheHitRate: number | null;
   totalCostUsd: number | null;
   worksheetStats: {
     totalGenerated: number;
@@ -63,4 +67,19 @@ export interface LogTemplateGenerationParams {
   outputTokenCount: number | undefined;
   costUsd: number | undefined;
   latencyMs: number;
+}
+
+export type PdfUploadStatus = "uploaded" | "failed" | "skipped";
+
+export interface LogPdfUploadParams {
+  userId?: number | null;
+  flow: string;
+  fieldName: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  bucketName?: string | null;
+  objectKey?: string | null;
+  status: PdfUploadStatus;
+  errorMessage?: string | null;
 }

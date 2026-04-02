@@ -6,20 +6,36 @@ const {
   mockListTemplates,
   mockUpdateTemplate,
   mockDeactivateTemplate,
+  mockNormalizeInputs,
+  mockValidateInBackground,
+  mockLogTemplateGeneration,
 } = vi.hoisted(() => ({
   mockGenerateTemplate: vi.fn(),
   mockGetTemplateById: vi.fn(),
   mockListTemplates: vi.fn(),
   mockUpdateTemplate: vi.fn(),
   mockDeactivateTemplate: vi.fn(),
+  mockNormalizeInputs: vi.fn(),
+  mockValidateInBackground: vi.fn(),
+  mockLogTemplateGeneration: vi.fn(),
 }));
 
 vi.mock('../../services/templates.js', () => ({
+  DEFAULT_TEMPLATE_MODEL: 'gpt-5-nano',
   generateTemplate: (...args: any[]) => mockGenerateTemplate(...args),
   getTemplateById: (...args: any[]) => mockGetTemplateById(...args),
   listTemplates: (...args: any[]) => mockListTemplates(...args),
   updateTemplate: (...args: any[]) => mockUpdateTemplate(...args),
   deactivateTemplate: (...args: any[]) => mockDeactivateTemplate(...args),
+}));
+
+vi.mock('../../services/openai.js', () => ({
+  normalizeInputs: (...args: any[]) => mockNormalizeInputs(...args),
+  validateInBackground: (...args: any[]) => mockValidateInBackground(...args),
+}));
+
+vi.mock('../../services/template_generation_log.js', () => ({
+  logTemplateGeneration: (...args: any[]) => mockLogTemplateGeneration(...args),
 }));
 
 import { generate, getById, list, update, deactivate } from '../../controllers/templates.js';
@@ -40,7 +56,15 @@ function mockRes() {
 
 /* ── generate ── */
 describe('generate', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockNormalizeInputs.mockResolvedValue({
+      subject: 'Math',
+      topic: 'Algebra',
+      gradeLevel: '8th Grade',
+    });
+    mockLogTemplateGeneration.mockResolvedValue(123);
+  });
 
   it('returns 400 when subject is missing', async () => {
     const res = mockRes();
@@ -64,7 +88,24 @@ describe('generate', () => {
   });
 
   it('returns 201 on success', async () => {
-    const template = { id: 1, subject: 'Math', topic: 'Algebra', gradeLevel: '8th' };
+    const template = {
+      response: {
+        id: 1,
+        subject: 'Math',
+        topic: 'Algebra',
+        gradeLevel: '8th Grade',
+        version: 1,
+        isActive: true,
+        sections: {
+          introduction: 'intro',
+          model_assessment: 'assessment',
+          self_review: 'review',
+        },
+        createdAt: '2026-04-01T00:00:00.000Z',
+        updatedAt: '2026-04-01T00:00:00.000Z',
+      },
+      usage: null,
+    };
     mockGenerateTemplate.mockResolvedValue(template);
 
     const res = mockRes();
@@ -72,9 +113,35 @@ describe('generate', () => {
       mockReq({ body: { subject: 'Math', topic: 'Algebra', gradeLevel: '8th' } }) as any,
       res,
     );
-    expect(mockGenerateTemplate).toHaveBeenCalledWith({ subject: 'Math', topic: 'Algebra', gradeLevel: '8th' });
+    expect(mockNormalizeInputs).toHaveBeenCalledWith('Math', 'Algebra', '8th');
+    expect(mockGenerateTemplate).toHaveBeenCalledWith(
+      { subject: 'Math', topic: 'Algebra', gradeLevel: '8th Grade' },
+      undefined,
+    );
     expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith(template);
+    expect(res.json).toHaveBeenCalledWith(template.response);
+  });
+
+  it('returns 400 when normalized input is invalid', async () => {
+    mockNormalizeInputs.mockRejectedValue(
+      Object.assign(new Error('Please enter a valid school subject and topic.'), {
+        name: 'InputNormalizationError',
+        issues: ['Subject is not a plausible academic subject.'],
+      }),
+    );
+
+    const res = mockRes();
+    await generate(
+      mockReq({ body: { subject: 'bad guy', topic: 'peron', gradeLevel: '8th' } }) as any,
+      res,
+    );
+
+    expect(mockGenerateTemplate).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'Please enter a valid school subject and topic.',
+      issues: ['Subject is not a plausible academic subject.'],
+    });
   });
 
   it('returns 500 on error', async () => {
@@ -142,11 +209,14 @@ describe('list', () => {
       mockReq({ query: { subject: 'Math', gradeLevel: '8th', isActive: 'true' } }) as any,
       res,
     );
-    expect(mockListTemplates).toHaveBeenCalledWith({
-      subject: 'Math',
-      gradeLevel: '8th',
-      isActive: true,
-    });
+    expect(mockListTemplates).toHaveBeenCalledWith(
+      {
+        subject: 'Math',
+        gradeLevel: '8th',
+        isActive: true,
+      },
+      undefined,
+    );
   });
 
   it('returns 500 on error', async () => {

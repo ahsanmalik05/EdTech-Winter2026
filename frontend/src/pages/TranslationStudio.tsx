@@ -5,7 +5,7 @@ import { cn } from '../lib/utils';
 import { getFontFamily } from '../lib/pdfFonts';
 import { api } from '../api/api';
 import { TranslationPDF } from '../components/TranslationPDF';
-import { useQuery } from '../api/useQuery';
+import { useQuery, invalidateQuery } from '../api/useQuery';
 
 interface Language {
   id: number;
@@ -113,6 +113,8 @@ export function TranslationStudio({ onBusyChange }: TranslationStudioProps) {
         const res = await api.post('/api/translate/pdf', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
+
+        invalidateQuery('/api/translation-log');
 
         setFileStatuses((prev) => ({ ...prev, [file.name]: 'done' }));
         setResults((prev) => ({
