@@ -57,16 +57,26 @@ export const register = async (req: Request, res: Response) => {
         .json({ error: "Failed to register user" } as ErrorResponse);
     }
 
-    const token = jwt.sign({ id: user[0].id }, config.jwtSecret, {
-      expiresIn: "1h",
-    });
-
     const rawToken = await createEmailVerificationToken(user[0].id);
     const verifyUrl = `${config.appBaseUrl}/api/auth/verify-email?token=${encodeURIComponent(rawToken)}`;
-    await sendVerificationEmail(user[0].email, verifyUrl);
+    try {
+      await sendVerificationEmail(user[0].email, verifyUrl);
+    } catch (sendErr) {
+      console.error(
+        JSON.stringify({
+          event: 'verification_email_failed',
+          phase: 'register',
+          recipient: user[0].email,
+          error: sendErr instanceof Error ? sendErr.message : String(sendErr),
+        }),
+      );
+    }
 
-    const response: AuthResponse = { user: user[0], message: "Registration successful. Please verify your email before logging in.",
-      verificationRequired: true };
+    const response: AuthResponse = {
+      user: user[0],
+      message: "Registration successful. Please verify your email before logging in.",
+      verificationRequired: true,
+    };
     return res.status(201).json(response);
   } catch (error) {
     console.error("Error registering user:", error);

@@ -26,11 +26,7 @@ interface Config {
     generation: string;
   };
   appBaseUrl: string;
-  smtpHost: string;
-  smtpPort: number;
-  smtpSecure: boolean;
-  smtpUser: string;
-  smtpPass: string;
+  resendApiKey: string;
   mailFrom: string;
 }
 
@@ -48,12 +44,10 @@ const config: Config = {
     generation: "gpt-5-nano",
   },
   appBaseUrl: process.env.APP_BASE_URL || "http://localhost:3000",
-  smtpHost: process.env.SMTP_HOST || "",
-  smtpPort: Number(process.env.SMTP_PORT) || 587,
-  smtpSecure: String(process.env.SMTP_SECURE || "false") === "true",
-  smtpUser: process.env.SMTP_USER || "",
-  smtpPass: process.env.SMTP_PASS || "",
-  mailFrom: process.env.MAIL_FROM || process.env.SMTP_USER || "",
+  resendApiKey: process.env.RESEND_API_KEY || "",
+  mailFrom:
+    process.env.MAIL_FROM?.trim() ||
+    "METY <onboarding@resend.dev>",
 };
 
 export default config;

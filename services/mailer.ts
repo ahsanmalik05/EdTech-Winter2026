@@ -1,26 +1,10 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import config from '../config/config.js';
 
-const transporter = nodemailer.createTransport({
-  host: config.smtpHost,
-  port: config.smtpPort,
-  secure: config.smtpSecure,
-  auth: {
-    user: config.smtpUser,
-    pass: config.smtpPass,
-  },
-});
+const VERIFY_SUBJECT = 'Verify your METY account';
 
-export async function sendVerificationEmail(email: string, verifyUrl: string): Promise<void> {
-  if (!config.smtpHost || !config.smtpUser || !config.smtpPass) {
-    throw new Error('SMTP configuration is missing. Set SMTP_HOST, SMTP_USER and SMTP_PASS.');
-  }
-
-  await transporter.sendMail({
-    from: config.mailFrom,
-    to: email,
-    subject: 'Verify your METY account',
-    html: `
+function verificationHtml(verifyUrl: string): string {
+  return `
       <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap');
       </style>
@@ -46,7 +30,61 @@ export async function sendVerificationEmail(email: string, verifyUrl: string): P
           </tr>
         </table>
       </div>
-    `,
-    text: `Welcome to METY. Verify your email by opening this link: ${verifyUrl}. This link expires in 24 hours.`,
+    `;
+}
+
+function verificationText(verifyUrl: string): string {
+  return `Welcome to METY. Verify your email by opening this link: ${verifyUrl}. This link expires in 24 hours.`;
+}
+
+export async function sendVerificationEmail(email: string, verifyUrl: string): Promise<void> {
+  if (!config.resendApiKey?.trim()) {
+    const msg = 'RESEND_API_KEY is not set.';
+    console.error(
+      JSON.stringify({
+        event: 'mail_send_failed',
+        recipient: email,
+        providerMessage: msg,
+      }),
+    );
+    throw new Error(msg);
+  }
+
+  if (!config.mailFrom?.trim()) {
+    const msg = 'MAIL_FROM is not set.';
+    console.error(
+      JSON.stringify({
+        event: 'mail_send_failed',
+        recipient: email,
+        providerMessage: msg,
+      }),
+    );
+    throw new Error(msg);
+  }
+
+  const resend = new Resend(config.resendApiKey);
+  const html = verificationHtml(verifyUrl);
+  const text = verificationText(verifyUrl);
+
+  const { error } = await resend.emails.send({
+    from: config.mailFrom,
+    to: email,
+    subject: VERIFY_SUBJECT,
+    html,
+    text,
   });
+
+  if (error) {
+    const providerMessage = error.message;
+    console.error(
+      JSON.stringify({
+        event: 'mail_send_failed',
+        recipient: email,
+        providerMessage,
+        providerCode: error.name,
+        statusCode: error.statusCode,
+      }),
+    );
+    throw new Error(`Resend rejected email: ${providerMessage}`);
+  }
 }

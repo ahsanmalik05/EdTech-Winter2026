@@ -89,6 +89,12 @@ async function start() {
     const termCount = await loadGlossaryCache();
     console.log(`Glossary cache loaded: ${termCount} terms`);
 
+    if (config.mailFrom.includes("@resend.dev")) {
+        console.warn(
+            "[mail] MAIL_FROM uses a @resend.dev address: only the Resend account owner email can receive messages until you add and verify a custom domain.",
+        );
+    }
+
     app.listen(port, '0.0.0.0', () => {
         console.log(`Server is running on port ${port}`);
     });
