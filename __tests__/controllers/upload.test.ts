@@ -91,18 +91,25 @@ function mockReq(overrides: Partial<Request> = {}): Request {
   } as Request;
 }
 
-function mockRes() {
-  const res: Partial<Response> & { write: ReturnType<typeof vi.fn> } = {
+type MockUploadResponse = Pick<
+  Response,
+  "status" | "json" | "setHeader" | "end"
+> & {
+  write: ReturnType<typeof vi.fn>;
+};
+
+function mockRes(): Response & { write: ReturnType<typeof vi.fn> } {
+  const res = {
     status: vi.fn(),
     json: vi.fn(),
     setHeader: vi.fn(),
-    write: vi.fn(),
+    write: vi.fn(() => true),
     end: vi.fn(),
-  };
+  } satisfies MockUploadResponse;
   (res.status as ReturnType<typeof vi.fn>).mockReturnValue(res);
   (res.json as ReturnType<typeof vi.fn>).mockReturnValue(res);
   (res.setHeader as ReturnType<typeof vi.fn>).mockReturnValue(res);
-  return res as Response & { write: ReturnType<typeof vi.fn> };
+  return res as unknown as Response & { write: typeof res.write };
 }
 
 function makeFile() {
