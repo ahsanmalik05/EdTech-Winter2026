@@ -36,6 +36,7 @@ CRITICAL RULES:
 - All sections must be flowing narrative prose, NEVER bullet points or numbered lists.
 - The four knowledge types must be adapted to the specific subject (e.g., for reading: facts = characters/setting, strategies = general plot, procedures = specific events, rationales = author's purpose).
 - The model assessment must include genuine knowledge gaps — things the student is unsure about or can't remember.
+- Every generated field must contain only final prose for that section. Do not include labels, field names, metadata, JSON, arrays, brackets used as data structures, or text such as "gaps:".
 - Write in first person throughout.
 - Use language appropriate for the grade level.
 
