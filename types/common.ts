@@ -82,4 +82,6 @@ export interface LogPdfUploadParams {
   objectKey?: string | null;
   status: PdfUploadStatus;
   errorMessage?: string | null;
+  contentHash?: string | null;
+  reusedExisting?: boolean;
 }

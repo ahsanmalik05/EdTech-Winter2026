@@ -32,6 +32,15 @@ export function computeTextHash(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
+export function isBucketConfigured(): boolean {
+  return Boolean(
+    config.bucket.name &&
+      config.bucket.endpoint &&
+      config.bucket.accessKeyId &&
+      config.bucket.secretAccessKey,
+  );
+}
+
 function buildObjectKey(hash: string): string {
   const env = config.nodeEnv || "development";
   return `pdf-archives/${env}/${hash}.pdf`;

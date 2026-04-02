@@ -12,10 +12,11 @@ import { validateTranslation } from "../services/validate.js";
 import { logTranslation } from "../services/translation_log.js";
 import { logTranslationValidation } from "../services/translation_validation_log.js";
 import {
-  archiveUploadedPdf,
-  getRequestUserId,
-} from "../services/pdf_upload.js";
-import { computeFileHash, computeTextHash, uploadToBucket } from "../services/bucket.js";
+  computeFileHash,
+  computeTextHash,
+  isBucketConfigured,
+  uploadToBucket,
+} from "../services/bucket.js";
 import { findUploadedByHash, recordPdfUpload } from "../services/pdf_uploads.js";
 import {
   getOrCreateSourceDocument,
@@ -91,23 +92,21 @@ export const uploadPdfFile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "No PDF file uploaded" });
     }
 
-    await archiveUploadedPdf({
-      file: req.file,
-      flow: "pdf",
-      userId: getRequestUserId(req),
-    });
-
     const targetLanguage = (req.body.language as string) || "French";
 
     const contentHash = await computeFileHash(filePath);
-    const fileSize = fs.statSync(filePath).size;
-    const userId = req.apiKey?.user_id;
+    const userId = req.user?.id ?? req.apiKey?.user_id;
 
     const existingUpload = await findUploadedByHash(contentHash);
     let objectKey: string | undefined;
     let reusedExisting = false;
+    let uploadStatus: "uploaded" | "failed" | "skipped" = "uploaded";
+    let uploadErrorMessage: string | undefined;
 
-    if (existingUpload) {
+    if (!isBucketConfigured()) {
+      uploadStatus = "skipped";
+      uploadErrorMessage = "Railway bucket configuration is incomplete";
+    } else if (existingUpload) {
       objectKey = existingUpload.objectKey;
       reusedExisting = true;
     } else {
@@ -117,18 +116,25 @@ export const uploadPdfFile = async (req: Request, res: Response) => {
         reusedExisting = !result.uploaded;
       } catch (err) {
         console.error("Bucket upload failed, continuing without archival:", err);
+        uploadStatus = "failed";
+        uploadErrorMessage =
+          err instanceof Error ? err.message : "Bucket upload failed";
       }
     }
 
     try {
       await recordPdfUpload({
         userId,
+        flow: "pdf",
+        fieldName: req.file.fieldname,
         contentHash,
         originalName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        sizeBytes: req.file.size ?? fs.statSync(filePath).size,
         objectKey,
-        fileSizeBytes: fileSize,
-        status: objectKey ? "uploaded" : "failed",
+        status: objectKey ? "uploaded" : uploadStatus,
         reusedExisting,
+        errorMessage: uploadErrorMessage,
       });
     } catch (err) {
       console.error("Failed to record PDF upload:", err);
@@ -258,25 +264,23 @@ export const uploadPdfFileStream = async (req: Request, res: Response) => {
       return res.end();
     }
 
-    await archiveUploadedPdf({
-      file: req.file,
-      flow: "pdf_stream",
-      userId: getRequestUserId(req),
-    });
-
     const targetLanguage = (req.body.language as string) || "French";
 
     sendEvent("status", { step: "extracting" });
 
     const contentHash = await computeFileHash(filePath);
-    const fileSize = fs.statSync(filePath).size;
-    const userId = req.apiKey?.user_id;
+    const userId = req.user?.id ?? req.apiKey?.user_id;
 
     const existingUpload = await findUploadedByHash(contentHash);
     let objectKey: string | undefined;
     let reusedExisting = false;
+    let uploadStatus: "uploaded" | "failed" | "skipped" = "uploaded";
+    let uploadErrorMessage: string | undefined;
 
-    if (existingUpload) {
+    if (!isBucketConfigured()) {
+      uploadStatus = "skipped";
+      uploadErrorMessage = "Railway bucket configuration is incomplete";
+    } else if (existingUpload) {
       objectKey = existingUpload.objectKey;
       reusedExisting = true;
     } else {
@@ -286,18 +290,25 @@ export const uploadPdfFileStream = async (req: Request, res: Response) => {
         reusedExisting = !result.uploaded;
       } catch (err) {
         console.error("Bucket upload failed, continuing without archival:", err);
+        uploadStatus = "failed";
+        uploadErrorMessage =
+          err instanceof Error ? err.message : "Bucket upload failed";
       }
     }
 
     try {
       await recordPdfUpload({
         userId,
+        flow: "pdf_stream",
+        fieldName: req.file.fieldname,
         contentHash,
         originalName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        sizeBytes: req.file.size ?? fs.statSync(filePath).size,
         objectKey,
-        fileSizeBytes: fileSize,
-        status: objectKey ? "uploaded" : "failed",
+        status: objectKey ? "uploaded" : uploadStatus,
         reusedExisting,
+        errorMessage: uploadErrorMessage,
       });
     } catch (err) {
       console.error("Failed to record PDF upload:", err);

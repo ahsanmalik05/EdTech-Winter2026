@@ -1,126 +1,218 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Request, Response } from "express";
 
-const { mockTranslateBatch } = vi.hoisted(() => ({
+const {
+  mockTranslateBatch,
+  mockExtractTextFromPdf,
+  mockDeleteFile,
+  mockComputeFileHash,
+  mockComputeTextHash,
+  mockUploadToBucket,
+  mockFindUploadedByHash,
+  mockRecordPdfUpload,
+  mockGetOrCreateSourceDocument,
+  mockFindCachedTranslation,
+  mockLogTranslation,
+} = vi.hoisted(() => ({
   mockTranslateBatch: vi.fn(),
+  mockExtractTextFromPdf: vi.fn(),
+  mockDeleteFile: vi.fn(),
+  mockComputeFileHash: vi.fn(),
+  mockComputeTextHash: vi.fn(),
+  mockUploadToBucket: vi.fn(),
+  mockFindUploadedByHash: vi.fn(),
+  mockRecordPdfUpload: vi.fn(),
+  mockGetOrCreateSourceDocument: vi.fn(),
+  mockFindCachedTranslation: vi.fn(),
+  mockLogTranslation: vi.fn(),
 }));
 
-vi.mock('../../services/cohere.js', () => ({
-  translateBatch: mockTranslateBatch,
+vi.mock("../../services/cohere.js", () => ({
+  translateBatch: (...args: unknown[]) => mockTranslateBatch(...args),
+  translateContent: vi.fn(),
 }));
 
-import { batchTranslate } from '../../controllers/translate.js';
-import type { Request, Response } from 'express';
+vi.mock("../../services/pdf.js", () => ({
+  extractTextFromPdf: (...args: unknown[]) => mockExtractTextFromPdf(...args),
+  deleteFile: (...args: unknown[]) => mockDeleteFile(...args),
+}));
 
-/* ── helpers ── */
-function mockReq(body: unknown): Request {
-  return { body } as unknown as Request;
+vi.mock("../../services/bucket.js", () => ({
+  computeFileHash: (...args: unknown[]) => mockComputeFileHash(...args),
+  computeTextHash: (...args: unknown[]) => mockComputeTextHash(...args),
+  isBucketConfigured: () => true,
+  uploadToBucket: (...args: unknown[]) => mockUploadToBucket(...args),
+}));
+
+vi.mock("../../services/pdf_uploads.js", () => ({
+  findUploadedByHash: (...args: unknown[]) => mockFindUploadedByHash(...args),
+  recordPdfUpload: (...args: unknown[]) => mockRecordPdfUpload(...args),
+}));
+
+vi.mock("../../services/translation_cache.js", () => ({
+  getOrCreateSourceDocument: (...args: unknown[]) =>
+    mockGetOrCreateSourceDocument(...args),
+  findCachedTranslation: (...args: unknown[]) =>
+    mockFindCachedTranslation(...args),
+}));
+
+vi.mock("../../services/translation_log.js", () => ({
+  logTranslation: (...args: unknown[]) => mockLogTranslation(...args),
+  getTranslationStatsFromDb: vi.fn(),
+}));
+
+import { batchTranslate } from "../../controllers/translate.js";
+
+function makeFile(name = "worksheet.pdf") {
+  return {
+    path: `/tmp/${name}`,
+    originalname: name,
+    fieldname: "pdfs",
+    mimetype: "application/pdf",
+    size: 222,
+  } as Express.Multer.File;
+}
+
+function mockReq(overrides: Partial<Request> = {}): Request {
+  return {
+    body: {},
+    files: undefined,
+    user: undefined,
+    apiKey: undefined,
+    ...overrides,
+  } as Request;
 }
 
 function mockRes() {
-  const res: Partial<Response> = {};
-  res.status = vi.fn().mockReturnValue(res);
-  res.json = vi.fn().mockReturnValue(res);
+  const res: Partial<Response> = {
+    status: vi.fn(),
+    json: vi.fn(),
+  };
+  (res.status as ReturnType<typeof vi.fn>).mockReturnValue(res);
+  (res.json as ReturnType<typeof vi.fn>).mockReturnValue(res);
   return res as Response;
 }
 
-/* ── tests ── */
-describe('batchTranslate controller', () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it('returns 400 when targetLanguage is missing', async () => {
-    const req = mockReq({ items: [{ id: '1', text: 'hi' }] });
-    const res = mockRes();
-    await batchTranslate(req as any, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: 'targetLanguage is required and must be a string' });
+describe("batchTranslate controller", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockComputeFileHash.mockResolvedValue("file-hash");
+    mockComputeTextHash.mockReturnValue("text-hash");
+    mockFindUploadedByHash.mockResolvedValue(null);
+    mockUploadToBucket.mockResolvedValue({
+      objectKey: "pdf-archives/dev/file-hash.pdf",
+      uploaded: true,
+    });
+    mockRecordPdfUpload.mockResolvedValue(1);
+    mockExtractTextFromPdf.mockResolvedValue("Hello");
+    mockGetOrCreateSourceDocument.mockResolvedValue({ id: 10, textHash: "text-hash" });
+    mockFindCachedTranslation.mockResolvedValue(null);
+    mockTranslateBatch.mockResolvedValue({
+      "worksheet.pdf": {
+        data: { translatedText: "Bonjour", notes: "" },
+        tokenCount: 4,
+      },
+    });
+    mockLogTranslation.mockResolvedValue(1);
+    mockDeleteFile.mockResolvedValue(undefined);
   });
 
-  it('returns 400 when targetLanguage is not a string', async () => {
-    const req = mockReq({ items: [{ id: '1', text: 'hi' }], targetLanguage: 123 });
+  it("returns 400 when targetLanguage is missing", async () => {
     const res = mockRes();
-    await batchTranslate(req as any, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
 
-  it('returns 400 when items is not an array', async () => {
-    const req = mockReq({ items: 'bad', targetLanguage: 'French' });
-    const res = mockRes();
-    await batchTranslate(req as any, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: 'items must be a non-empty array of { id, text } objects' });
-  });
+    await batchTranslate(
+      mockReq({ files: [makeFile()] as unknown as Request["files"] }),
+      res,
+    );
 
-  it('returns 400 when items is empty', async () => {
-    const req = mockReq({ items: [], targetLanguage: 'French' });
-    const res = mockRes();
-    await batchTranslate(req as any, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when an item has invalid shape', async () => {
-    const req = mockReq({ items: [{ id: 1, text: 'hi' }], targetLanguage: 'French' });
-    const res = mockRes();
-    await batchTranslate(req as any, res);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: "Each item must have a string 'id' and a string 'text' property",
+      error: "targetLanguage is required and must be a string",
     });
   });
 
-  it('returns 400 when gradeLevel is not a string', async () => {
-    const req = mockReq({ items: [{ id: '1', text: 'hi' }], targetLanguage: 'French', gradeLevel: 5 });
+  it("returns 400 when no files are provided", async () => {
     const res = mockRes();
-    await batchTranslate(req as any, res);
+
+    await batchTranslate(
+      mockReq({ body: { targetLanguage: "French" }, files: [] as unknown as Request["files"] }),
+      res,
+    );
+
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: 'gradeLevel must be a string if provided' });
+    expect(res.json).toHaveBeenCalledWith({
+      error: "At least one PDF file is required",
+    });
   });
 
-  it('returns 200 with results on success', async () => {
-    const fakeResults = { '1': { translatedText: 'bonjour' } };
-    mockTranslateBatch.mockResolvedValue(fakeResults);
-
-    const req = mockReq({
-      items: [{ id: '1', text: 'hello' }],
-      targetLanguage: 'French',
-    });
+  it("returns 400 when gradeLevel is invalid", async () => {
     const res = mockRes();
-    await batchTranslate(req as any, res);
 
+    await batchTranslate(
+      mockReq({
+        body: { targetLanguage: "French", gradeLevel: 5 },
+        files: [makeFile()] as unknown as Request["files"],
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "gradeLevel must be a string if provided",
+    });
+  });
+
+  it("returns 422 when PDF extraction is empty", async () => {
+    mockExtractTextFromPdf.mockResolvedValue("   ");
+    const res = mockRes();
+
+    await batchTranslate(
+      mockReq({
+        body: { targetLanguage: "French" },
+        files: [makeFile()] as unknown as Request["files"],
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.json).toHaveBeenCalledWith({
+      error:
+        'Could not extract text from "worksheet.pdf". The file may be image-based or empty.',
+    });
+    expect(mockDeleteFile).toHaveBeenCalledWith("/tmp/worksheet.pdf");
+  });
+
+  it("returns translated results on success", async () => {
+    const res = mockRes();
+
+    await batchTranslate(
+      mockReq({
+        body: { targetLanguage: "French", gradeLevel: "5th grade" },
+        files: [makeFile()] as unknown as Request["files"],
+      }),
+      res,
+    );
+
+    expect(mockRecordPdfUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flow: "batch",
+        fieldName: "pdfs",
+        contentHash: "file-hash",
+      }),
+    );
     expect(mockTranslateBatch).toHaveBeenCalledWith(
-      [{ id: '1', text: 'hello' }],
-      'French',
-      undefined,
+      [{ id: "worksheet.pdf", text: "Hello" }],
+      "French",
+      "5th grade",
     );
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ results: fakeResults });
-  });
-
-  it('passes gradeLevel to translateBatch when provided', async () => {
-    mockTranslateBatch.mockResolvedValue({});
-    const req = mockReq({
-      items: [{ id: '1', text: 'hi' }],
-      targetLanguage: 'Spanish',
-      gradeLevel: '5th grade',
+    expect(res.json).toHaveBeenCalledWith({
+      results: {
+        "worksheet.pdf": {
+          data: { translatedText: "Bonjour", notes: "" },
+          tokenCount: 4,
+        },
+      },
     });
-    const res = mockRes();
-    await batchTranslate(req as any, res);
-
-    expect(mockTranslateBatch).toHaveBeenCalledWith(
-      [{ id: '1', text: 'hi' }],
-      'Spanish',
-      '5th grade',
-    );
-  });
-
-  it('returns 500 when translateBatch throws', async () => {
-    mockTranslateBatch.mockRejectedValue(new Error('boom'));
-    const req = mockReq({
-      items: [{ id: '1', text: 'hi' }],
-      targetLanguage: 'French',
-    });
-    const res = mockRes();
-    await batchTranslate(req as any, res);
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to perform batch translation' });
   });
 });

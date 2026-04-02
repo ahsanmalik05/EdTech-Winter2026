@@ -1,7 +1,10 @@
 import fs from "fs";
-import { PDFParse } from 'pdf-parse';
+import * as pdfParseModule from "pdf-parse";
 
-export type TranslatedBlock = { tokenCount?: number | null | undefined; notes?: string | undefined } & DocumentBlock ;
+export type TranslatedBlock = DocumentBlock & {
+  tokenCount?: number | null | undefined;
+  notes?: string | undefined;
+};
 
 export interface DocumentBlock {
   type: 'heading' | 'paragraph' | 'bullet_list' | 'numbered_list' | 'table_row' | 'blank';
@@ -21,9 +24,23 @@ const NEW_PARAGRAPH_STARTERS = [
 
 export async function extractTextFromPdf(filePath: string): Promise<string> {
   const buffer = fs.readFileSync(filePath);
-  const uint8Array = new Uint8Array(buffer);
-  const data = await new PDFParse(uint8Array).getText();
-  return data.text;
+  const moduleExports = pdfParseModule as unknown as {
+    default?: (input: Buffer | Uint8Array) => Promise<{ text?: string }>;
+    PDFParse?: new (input: Uint8Array) => {
+      getText: () => Promise<{ text?: string }>;
+    };
+  };
+
+  let data: { text?: string };
+  if (typeof moduleExports.default === "function") {
+    data = await moduleExports.default(buffer);
+  } else if (typeof moduleExports.PDFParse === "function") {
+    data = await new moduleExports.PDFParse(new Uint8Array(buffer)).getText();
+  } else {
+    throw new Error("Unsupported pdf-parse module shape");
+  }
+
+  return data.text ?? "";
 }
 
 export async function extractStructuredTextFromPdf(filePath: string): Promise<DocumentBlock[]> {

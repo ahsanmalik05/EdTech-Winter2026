@@ -8,7 +8,7 @@ import { logTranslationValidation } from '../services/translation_validation_log
 import {
   archiveUploadedPdf,
   getRequestUserId,
-} from '../services/pdf_upload.js';
+} from '../services/pdf_uploads.js';
 
 export const validateTranslationHandler = async (
   req: Request,
