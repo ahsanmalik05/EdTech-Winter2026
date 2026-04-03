@@ -194,10 +194,9 @@ describe("uploadPdfFile", () => {
 
     expect(mockRecordPdfUpload).toHaveBeenCalledWith(
       expect.objectContaining({
-        flow: "pdf",
-        fieldName: "pdf",
         contentHash: "file-hash",
         reusedExisting: false,
+        originalName: "test.pdf",
       }),
     );
     expect(res.status).toHaveBeenCalledWith(200);
@@ -273,8 +272,8 @@ describe("uploadPdfFileStream", () => {
     expect(writes.some((value) => value.includes("event: complete"))).toBe(true);
     expect(mockRecordPdfUpload).toHaveBeenCalledWith(
       expect.objectContaining({
-        flow: "pdf_stream",
         contentHash: "file-hash",
+        originalName: "test.pdf",
       }),
     );
   });

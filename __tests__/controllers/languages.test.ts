@@ -48,7 +48,7 @@ describe('availableLanguages', () => {
     const res = mockRes();
     await availableLanguages(mockReq(), res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ languages: langs });
+    expect(res.json).toHaveBeenCalledWith(langs);
   });
 
   it('returns 500 on error', async () => {
