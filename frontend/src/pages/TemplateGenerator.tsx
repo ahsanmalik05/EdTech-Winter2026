@@ -166,6 +166,7 @@ export function TemplateGenerator({ onBusyChange }: { onBusyChange?: (busy: bool
       });
 
       invalidateQuery('/api/template-generation-log');
+      invalidateQuery('/api/admin/stats');
 
       const created = res.data as TemplateResponse;
       mutateTemplates((prev) => [created, ...(prev ?? [])]);

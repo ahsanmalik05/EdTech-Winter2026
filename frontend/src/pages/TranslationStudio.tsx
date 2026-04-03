@@ -115,6 +115,7 @@ export function TranslationStudio({ onBusyChange }: TranslationStudioProps) {
         });
 
         invalidateQuery('/api/translation-log');
+        invalidateQuery('/api/admin/stats');
 
         setFileStatuses((prev) => ({ ...prev, [file.name]: 'done' }));
         setResults((prev) => ({

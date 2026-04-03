@@ -7,6 +7,7 @@ interface CacheEntry<T> {
 }
 
 const cache = new Map<string, CacheEntry<unknown>>();
+const listeners = new Map<string, Set<() => void>>();
 
 const DEFAULT_STALE_MS = 30000;
 
@@ -73,6 +74,13 @@ export function useQuery<T = any>(
   }, [url, staleTime]);
 
   useEffect(() => {
+    if (!url) return;
+    if (!listeners.has(url)) listeners.set(url, new Set());
+    listeners.get(url)!.add(fetchData);
+    return () => { listeners.get(url)?.delete(fetchData); };
+  }, [url, fetchData]);
+
+  useEffect(() => {
     if (enabled) fetchData();
   }, [fetchData, enabled]);
 
@@ -111,10 +119,14 @@ export function useQuery<T = any>(
 
 export function invalidateQuery(url: string) {
   cache.delete(url);
+  listeners.get(url)?.forEach(fn => fn());
 }
 
 export function invalidateQueries(prefix: string) {
   for (const key of cache.keys()) {
     if (key.startsWith(prefix)) cache.delete(key);
+  }
+  for (const [key, fns] of listeners.entries()) {
+    if (key.startsWith(prefix)) fns.forEach(fn => fn());
   }
 }

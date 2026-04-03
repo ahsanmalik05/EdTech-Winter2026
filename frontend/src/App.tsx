@@ -17,6 +17,8 @@ import { TranslationStats } from './pages/TranslationStats';
 import { TranslationLog } from './pages/TranslationLog';
 import { TemplateGenerationLog } from './pages/TemplateGenerationLog';
 import { LanguageManager } from './pages/LanguageManager';
+import { AdminTranslationValidations } from './pages/AdminTranslationValidations';
+import { AdminGenerationValidations } from './pages/AdminGenerationValidations';
 import { cn } from './lib/utils';
 import { EmailVerificationResult } from './pages/EmailVerificationResult';
 
@@ -26,9 +28,9 @@ interface AppUser {
   role: 'user' | 'admin';
 }
 
-type PageKey = 'translate' | 'generate' | 'logs' | 'template-logs' | 'languages' | 'keys' | 'admin-stats';
+type PageKey = 'translate' | 'generate' | 'logs' | 'template-logs' | 'languages' | 'keys' | 'admin-stats' | 'admin-translation-validations' | 'admin-generation-validations';
 
-const PAGES: PageKey[] = ['translate', 'generate', 'logs', 'template-logs', 'languages', 'keys', 'admin-stats'];
+const PAGES: PageKey[] = ['translate', 'generate', 'logs', 'template-logs', 'languages', 'keys', 'admin-stats', 'admin-translation-validations', 'admin-generation-validations'];
 
 function pageFromPath(pathname: string): PageKey {
   const seg = pathname.slice(1) || 'translate';
@@ -121,9 +123,17 @@ function AppLayout({
 
           {/* Admin pages */}
           {user.role === 'admin' && (
-            <div className={cn('contents', activePage !== 'admin-stats' && 'hidden')}>
-              <TranslationStats />
-            </div>
+            <>
+              <div className={cn('contents', activePage !== 'admin-stats' && 'hidden')}>
+                <TranslationStats />
+              </div>
+              <div className={cn('contents', activePage !== 'admin-translation-validations' && 'hidden')}>
+                <AdminTranslationValidations />
+              </div>
+              <div className={cn('contents', activePage !== 'admin-generation-validations' && 'hidden')}>
+                <AdminGenerationValidations />
+              </div>
+            </>
           )}
         </div>
 
@@ -206,6 +216,12 @@ export function App() {
         <Route path="/languages" element={<div />} />
         <Route path="/keys" element={<div />} />
         <Route path="/admin/stats" element={
+          user?.role === 'admin' ? <div /> : <Navigate to="/translate" replace />
+        } />
+        <Route path="/admin/translation-validations" element={
+          user?.role === 'admin' ? <div /> : <Navigate to="/translate" replace />
+        } />
+        <Route path="/admin/generation-validations" element={
           user?.role === 'admin' ? <div /> : <Navigate to="/translate" replace />
         } />
         <Route

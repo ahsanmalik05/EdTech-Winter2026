@@ -14,6 +14,7 @@ import { motion } from "motion/react";
 import {
   BarChart3,
   ChevronsUpDown,
+  ClipboardCheck,
   Globe,
   KeyRound,
   Languages,
@@ -93,6 +94,8 @@ const ADMIN_NAV_ITEMS = [
     section: "admin",
     items: [
       { to: "/admin/stats", label: "Platform Stats", icon: BarChart3 },
+      { to: "/admin/translation-validations", label: "Translation QA", icon: ClipboardCheck },
+      { to: "/admin/generation-validations", label: "Generation QA", icon: ClipboardCheck },
     ],
   },
 ];
