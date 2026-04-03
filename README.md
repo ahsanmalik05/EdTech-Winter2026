@@ -23,67 +23,67 @@ exists only to make the API easier to test and demonstrate.
 
 ## Quick Start
 
-The API is deployed and live at:
+The demo is deployed and live — no installation required:
 
 **https://edtech-winter2026-production.up.railway.app/**
 
-No local setup is required. Follow the steps below to get started.
-
-> **Note for TAs:** A pre-made admin account has been set up for you. You are welcome to create your own account instead by following the steps below. Email: admin@metytech.online Password: admin
+> **Note for TAs:** A pre-made admin account has been set up for you — credentials are provided separately. You are still welcome to create your own account by following the steps below.
 
 ---
 
-### Step 1 — Create an account
+### Step 1 — Sign up
 
-Visit the link above and click **Create Account**. Enter your email address and a password to register.
+1. Visit the link above and select **Create Account**.
+2. Enter your email and a password, then click **Create Account**.
 
 ![Sign up screen](images/SignUp.png)
 
-After submitting, you will receive a verification email from `onboarding@metytech.online` with a **Verify Email** button. Click it to confirm your address. Once verified, you will see a "You are verified" confirmation page. You can then sign in.
+3. Check your inbox for a verification email from `onboarding@metytech.online` and click **Verify Email**.
+4. You will land on a confirmation page. Click **Back to Login** and sign in.
 
 ![Verification success page](images/VerificationPage.png)
 
 ---
 
-### Step 2 — Create an API key
+### Step 2 — Create and activate an API key
 
-After signing in you will be prompted to create your first API key. Navigate to the **API Keys** page from the sidebar if you are not redirected there automatically. You will see an empty keys page to start.
+Every request to the platform requires an API key. After signing in you will be taken to the **API Keys** page automatically.
 
 ![API Keys page — no keys yet](images/KeyCreation.png)
 
-1. Enter a label for your key (e.g. `Development`) in the **New Key** field and click **+ Create**.
-2. Your full key is revealed — copy it somewhere safe. It cannot be retrieved again. Click **Use this key** to activate it immediately.
+1. Type a label (e.g. `Development`) in the **New Key** field and click **+ Create**.
+2. Your full key is displayed. Copy it then click **Use this key** to activate it right away.
+
+   > **Note:** In this demo, raw keys are saved in your browser so you can switch between them. In the actual METY Technology app our partner is building, keys will be shown only once at creation.
 
 ![API key revealed after creation](images/Key.png)
 
-3. Once active, the key shows **ACTIVE** in the list and will be used automatically by the demo interface for all requests.
+3. Your key now shows **ACTIVE**. The demo interface will use it automatically for all requests going forward.
 
 ![API key set as active](images/ActiveKey.png)
 
 ---
 
-### Step 3 — Explore the features
+### Step 3 — Use the features
 
-All pages are accessible from the **sidebar** on the left. The pages available depend on your account role.
+All pages are in the **sidebar** on the left. Standard user accounts have access to:
 
-**Standard user accounts** have access to the following pages:
+| Page | What you can do |
+|------|----------------|
+| **Translate** | Upload a PDF and pick a target language to get a translated PDF back. Also includes a quick text translation field. Sample CSA templates are in the repo root (`self-assessment-example-for-history.pdf`, `self-assessment-template-for-math (1).pdf`, `self-assessment-template-for-reading.pdf`) and can be used directly. |
+| **Generate** | Enter a subject, topic, and grade level to generate a CSA self-assessment template. Preview and download it as a PDF. |
+| **Translation Logs** | See a history of every translation you have run. |
+| **Template Logs** | See a history of every template you have generated. |
+| **Languages** | Browse all 130+ supported translation languages. |
+| **API Keys** | Create, switch between, or delete your API keys. |
 
-| Feature | Description |
-|---------|-------------|
-| **Translate** | Upload a PDF file and select a target language to receive a translated version. Also includes a text translation playground for quick testing. Sample CSA templates are included in the root of the repository (`self-assessment-example-for-history.pdf`, `self-assessment-template-for-math (1).pdf`, `self-assessment-template-for-reading.pdf`) and can be used directly for testing. |
-| **Generate** | Provide a subject, topic, and grade level to generate a CSA self-assessment template. Templates can be previewed and downloaded as PDFs. |
-| **Translation Logs** | View a history of all text translations made under your account. |
-| **Template Logs** | View a history of all template generation requests. |
-| **Languages** | Browse the full list of supported translation languages (130+). |
-| **API Keys** | Create, manage, or delete your API keys. |
+**Admin accounts** have three additional pages:
 
-> **Admin accounts** have access to the following additional pages not visible to standard users. Use the provided admin credentials to explore those.
-
-| Feature | Description |
-|---------|-------------|
-| **Translation Stats** | Platform-wide analytics including total translations, success rates, cost, token usage, top languages, and template generation breakdowns. |
-| **Translation Validations** | Review all translation requests across all users, including back-translation quality checks, similarity scores, section integrity, and confidence ratings. |
-| **Generation Validations** | Review all template generation requests across all users, including validation status, issues flagged, model used, cost, and latency. |
+| Page | What you can do |
+|------|----------------|
+| **Translation Stats** | View platform-wide analytics — total translations, success rates, cost, token usage, and top languages. |
+| **Translation Validations** | Inspect every translation across all users, including back-translation quality checks, similarity scores, and confidence ratings. |
+| **Generation Validations** | Inspect every template generation across all users, including validation status, issues flagged, model used, cost, and latency. |
 
 ---
 
