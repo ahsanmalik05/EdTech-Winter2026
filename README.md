@@ -51,7 +51,7 @@ For developers who want to run the project locally, please continue reading belo
 | React 19 + Vite | Frontend demo interface |
 | Tailwind CSS + Material UI | Frontend styling |
 | Vitest + Supertest | Unit and integration testing |
-| Render | Production deployment |
+| Railway | Production deployment |
 
 ---
 
