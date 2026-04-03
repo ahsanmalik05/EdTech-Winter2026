@@ -14,12 +14,6 @@ import config from "../config/config.js";
 import { createEmailVerificationToken, consumeEmailVerificationToken } from "../services/email_verification.js";
 import { sendVerificationEmail } from "../services/mailer.js";
 import type { ErrorResponse } from "../types/response.js";
-import {
-  elapsedMs,
-  getRequestMeta,
-  logError,
-  logInfo,
-} from "../utils/observability.js";
 
 const IS_PROD = config.nodeEnv === "production";
 
@@ -33,7 +27,6 @@ const COOKIE_OPTIONS: import("express").CookieOptions = {
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const requestMeta = getRequestMeta(req);
     const { email, password } = req.body as AuthRegisterRequest;
     if (!email || !password) {
       return res
@@ -41,17 +34,10 @@ export const register = async (req: Request, res: Response) => {
         .json({ error: "Email and password are required" } as ErrorResponse);
     }
 
-    const userExistsStartedAt = Date.now();
-    logInfo("auth_register_user_lookup_started", requestMeta);
     const userExists = await db
       .select()
       .from(users)
       .where(eq(users.email, email));
-    logInfo("auth_register_user_lookup_finished", {
-      ...requestMeta,
-      durationMs: elapsedMs(userExistsStartedAt),
-      rowCount: userExists.length,
-    });
 
     if (userExists.length > 0) {
       return res
@@ -60,17 +46,10 @@ export const register = async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const userInsertStartedAt = Date.now();
-    logInfo("auth_register_user_insert_started", requestMeta);
     const user = await db
       .insert(users)
       .values({ email, password: hashedPassword, emailVerified: false })
       .returning({ id: users.id, email: users.email, emailVerified: users.emailVerified });
-    logInfo("auth_register_user_insert_finished", {
-      ...requestMeta,
-      durationMs: elapsedMs(userInsertStartedAt),
-      inserted: Boolean(user[0]),
-    });
 
     if (!user[0]) {
       return res
@@ -100,7 +79,7 @@ export const register = async (req: Request, res: Response) => {
     };
     return res.status(201).json(response);
   } catch (error) {
-    logError("auth_register_failed", error, getRequestMeta(req));
+    console.error("Registration failed:", error);
     return res
       .status(500)
       .json({ error: "Failed to register user" } as ErrorResponse);
@@ -109,7 +88,6 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const requestMeta = getRequestMeta(req);
     const { email, password } = req.body as AuthLoginRequest;
     if (!email || !password) {
       return res
@@ -117,14 +95,7 @@ export const login = async (req: Request, res: Response) => {
         .json({ error: "Email and password are required" } as ErrorResponse);
     }
 
-    const userLookupStartedAt = Date.now();
-    logInfo("auth_login_user_lookup_started", requestMeta);
     const user = await db.select().from(users).where(eq(users.email, email));
-    logInfo("auth_login_user_lookup_finished", {
-      ...requestMeta,
-      durationMs: elapsedMs(userLookupStartedAt),
-      rowCount: user.length,
-    });
 
     if (user.length === 0) {
       return res
@@ -156,7 +127,7 @@ export const login = async (req: Request, res: Response) => {
     };
     return res.status(200).json(response);
   } catch (error) {
-    logError("auth_login_failed", error, getRequestMeta(req));
+    console.error("Login failed:", error);
     return res
       .status(500)
       .json({ error: "Failed to login user" } as ErrorResponse);
@@ -175,7 +146,6 @@ export const logout = async (_req: Request, res: Response) => {
 
 export const me = async (req: Request, res: Response) => {
   try {
-    const requestMeta = getRequestMeta(req);
     const token = req.cookies?.token;
 
     if (!token) {
@@ -189,21 +159,10 @@ export const me = async (req: Request, res: Response) => {
     };
     const userId = decodedToken.id;
 
-    const meLookupStartedAt = Date.now();
-    logInfo("auth_me_user_lookup_started", {
-      ...requestMeta,
-      userId,
-    });
     const user = await db
       .select({ id: users.id, email: users.email, role: users.role, createdAt: users.createdAt, emailVerified: users.emailVerified })
       .from(users)
       .where(eq(users.id, userId));
-    logInfo("auth_me_user_lookup_finished", {
-      ...requestMeta,
-      userId,
-      durationMs: elapsedMs(meLookupStartedAt),
-      rowCount: user.length,
-    });
 
     if (user.length === 0) {
       return res.status(404).json({ error: "User not found" } as ErrorResponse);
@@ -212,7 +171,7 @@ export const me = async (req: Request, res: Response) => {
     const response: MeResponse = { user: user[0]! };
     return res.status(200).json(response);
   } catch (error) {
-    logError("auth_me_failed", error, getRequestMeta(req));
+    console.error("Failed to fetch user:", error);
     return res
       .status(500)
       .json({ error: "Failed to fetch user" } as ErrorResponse);

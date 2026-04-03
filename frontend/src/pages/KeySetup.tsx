@@ -179,7 +179,7 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
           <p className="text-xs font-semibold text-amber-800 mb-0.5">Demo mode</p>
           <p className="text-xs text-amber-700 leading-relaxed">
             Raw keys are saved in your browser so you can switch between them.
-            In production, keys are shown only once at creation.
+            In the actual Mety Technology app our partner is working on, keys will be shown only once at creation.
           </p>
         </div>
       </div>

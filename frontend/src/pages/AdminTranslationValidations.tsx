@@ -70,8 +70,9 @@ function fmtConfidence(raw: string | null): { label: string; color: string } | n
   const n = parseFloat(raw);
   if (!isFinite(n)) return null;
   const pct = Math.round(n * 100);
-  if (n >= 0.8) return { label: `${pct}%`, color: "text-emerald-600" };
-  if (n >= 0.6) return { label: `${pct}%`, color: "text-amber-500" };
+  if (n >= 0.9) return { label: `${pct}%`, color: "text-emerald-600" };
+  if (n >= 0.7) return { label: `${pct}%`, color: "text-blue-500" };
+  if (n >= 0.5) return { label: `${pct}%`, color: "text-amber-500" };
   return { label: `${pct}%`, color: "text-red-500" };
 }
 
@@ -133,13 +134,15 @@ function EntryRow({ entry }: { entry: TranslationValidationEntry }) {
         className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-zinc-50 transition-colors"
       >
         {/* Status indicator */}
-        {hasMissing ? (
-          <HelpCircle className="size-4 text-zinc-300 shrink-0" />
-        ) : entry.sectionCountMatch === false || entry.headersIntact === false || issueCount > 0 ? (
-          <AlertTriangle className="size-4 text-amber-400 shrink-0" />
-        ) : (
-          <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-        )}
+        {(() => {
+          if (hasMissing) return <HelpCircle className="size-4 text-zinc-300 shrink-0" />;
+          const confVal = entry.overallConfidence ? parseFloat(entry.overallConfidence) : null;
+          if (confVal !== null && confVal < 0.7)
+            return <AlertTriangle className="size-4 text-amber-400 shrink-0" />;
+          if (issueCount > 0 || (confVal !== null && confVal < 0.9))
+            return <AlertTriangle className="size-4 text-blue-400 shrink-0" />;
+          return <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />;
+        })()}
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -216,11 +219,13 @@ function EntryRow({ entry }: { entry: TranslationValidationEntry }) {
                 {entry.overallConfidence !== null && (
                   <span className={cn(
                     "inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs",
-                    parseFloat(entry.overallConfidence) >= 0.8
+                    parseFloat(entry.overallConfidence) >= 0.9
                       ? "bg-emerald-50 text-emerald-700"
-                      : parseFloat(entry.overallConfidence) >= 0.6
-                        ? "bg-amber-50 text-amber-600"
-                        : "bg-red-50 text-red-500"
+                      : parseFloat(entry.overallConfidence) >= 0.7
+                        ? "bg-blue-50 text-blue-600"
+                        : parseFloat(entry.overallConfidence) >= 0.5
+                          ? "bg-amber-50 text-amber-600"
+                          : "bg-red-50 text-red-500"
                   )}>
                     Confidence {Math.round(parseFloat(entry.overallConfidence) * 100)}%
                   </span>
@@ -300,13 +305,25 @@ function MetaItem({ label, value }: { label: string; value: string }) {
 }
 
 function TextExcerpt({ label, text }: { label: string; text: string | null }) {
+  const [showFull, setShowFull] = useState(false);
   if (!text) return null;
+  const isLong = text.length > 400;
   return (
     <div>
       <p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-xs text-zinc-600 bg-white border border-zinc-100 rounded px-3 py-2 font-mono whitespace-pre-wrap line-clamp-4">
-        {excerpt(text, 400)}
-      </p>
+      <div className="text-xs text-zinc-600 bg-white border border-zinc-100 rounded px-3 py-2 font-mono whitespace-pre-wrap">
+        <p className={showFull ? "" : "line-clamp-4"}>
+          {showFull ? text : excerpt(text, 400)}
+        </p>
+        {isLong && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowFull((v) => !v); }}
+            className="text-[11px] text-indigo-500 hover:text-indigo-700 mt-1.5 font-sans font-medium"
+          >
+            {showFull ? "Show less" : "Show more"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -341,11 +358,15 @@ export function AdminTranslationValidations() {
     return entries.filter((e) => {
       if (validationFilter === "missing" && e.validationId !== null) return false;
       if (validationFilter === "issues") {
-        const hasIssues =
-          (e.validationIssues?.length ?? 0) > 0 ||
-          e.sectionCountMatch === false ||
-          e.headersIntact === false;
-        if (!hasIssues) return false;
+        const confVal = e.overallConfidence ? parseFloat(e.overallConfidence) : null;
+        if (!(confVal !== null && confVal < 0.7)) return false;
+      }
+      if (validationFilter === "needs-review") {
+        const confVal = e.overallConfidence ? parseFloat(e.overallConfidence) : null;
+        const isNeedsReview =
+          (confVal === null || confVal >= 0.7) &&
+          ((e.validationIssues?.length ?? 0) > 0 || (confVal !== null && confVal < 0.9));
+        if (!isNeedsReview) return false;
       }
       if (lowConfOnly) {
         const conf = e.overallConfidence ? parseFloat(e.overallConfidence) : null;
@@ -391,10 +412,16 @@ export function AdminTranslationValidations() {
   const issueCount = entries.filter(
     (e) =>
       e.validationId !== null &&
-      ((e.validationIssues?.length ?? 0) > 0 ||
-        e.sectionCountMatch === false ||
-        e.headersIntact === false),
+      e.overallConfidence !== null && parseFloat(e.overallConfidence) < 0.7,
   ).length;
+  const needsReviewCount = entries.filter((e) => {
+    if (e.validationId === null) return false;
+    const confVal = e.overallConfidence ? parseFloat(e.overallConfidence) : null;
+    return (
+      (confVal === null || confVal >= 0.7) &&
+      ((e.validationIssues?.length ?? 0) > 0 || (confVal !== null && confVal < 0.9))
+    );
+  }).length;
   const lowConfCount = entries.filter(
     (e) =>
       e.overallConfidence !== null &&
@@ -453,6 +480,21 @@ export function AdminTranslationValidations() {
           >
             <AlertTriangle className="size-3" />
             {issueCount} with issues
+          </button>
+          <button
+            onClick={() => {
+              setValidationFilter("needs-review");
+              setAppliedFilters((prev) => ({ ...prev, validationStatus: "needs-review" }));
+            }}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              appliedFilters.validationStatus === "needs-review"
+                ? "bg-zinc-800 text-white"
+                : "bg-blue-50 text-blue-600 hover:bg-blue-100",
+            )}
+          >
+            <AlertTriangle className="size-3" />
+            {needsReviewCount} needs review
           </button>
           <button
             onClick={() => setLowConfOnly((v) => !v)}
@@ -514,6 +556,7 @@ export function AdminTranslationValidations() {
           >
             <option value="all">All statuses</option>
             <option value="missing">Missing validation</option>
+            <option value="needs-review">Needs review</option>
             <option value="issues">Has issues</option>
           </select>
         </div>

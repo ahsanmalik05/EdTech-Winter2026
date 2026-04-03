@@ -38,6 +38,7 @@ interface GenerationValidationEntry {
   isValid: boolean | null;
   validationIssues: string[] | null;
   validationModel: string | null;
+  validationStatus: string | null;
   validatedAt: string | null;
 }
 
@@ -84,16 +85,19 @@ function EntryRow({ entry }: { entry: GenerationValidationEntry }) {
   const [expanded, setExpanded] = useState(false);
   const cost = fmtCost(entry.costUsd);
   const issueCount = entry.validationIssues?.length ?? 0;
+  const isPending = entry.validationStatus === "pending";
   const hasMissingValidation = entry.validationId === null;
   const hasValidationIssues = issueCount > 0;
 
   const rowIcon = !entry.success
     ? <XCircle className="size-4 text-red-500 shrink-0" />
-    : hasMissingValidation
-      ? <HelpCircle className="size-4 text-zinc-300 shrink-0" />
-      : entry.isValid === false || hasValidationIssues
-        ? <AlertTriangle className="size-4 text-amber-400 shrink-0" />
-        : <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />;
+    : isPending
+      ? <Clock className="size-4 text-blue-400 shrink-0 animate-pulse" />
+      : hasMissingValidation
+        ? <HelpCircle className="size-4 text-zinc-300 shrink-0" />
+        : entry.isValid === false || hasValidationIssues
+          ? <AlertTriangle className="size-4 text-amber-400 shrink-0" />
+          : <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />;
 
   return (
     <div className="border border-zinc-200 rounded-lg overflow-hidden bg-white">
@@ -118,6 +122,11 @@ function EntryRow({ entry }: { entry: GenerationValidationEntry }) {
             {hasMissingValidation && entry.success && (
               <span className="text-[10px] font-medium bg-zinc-100 text-zinc-400 px-1.5 py-0.5 rounded shrink-0">
                 no validation
+              </span>
+            )}
+            {isPending && (
+              <span className="text-[10px] font-medium bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded shrink-0">
+                pending
               </span>
             )}
             {entry.isValid === false && (
@@ -192,6 +201,17 @@ function EntryRow({ entry }: { entry: GenerationValidationEntry }) {
 
           {/* Validation details */}
           {entry.validationId !== null ? (
+            isPending ? (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                  Validation
+                </p>
+                <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs bg-blue-50 text-blue-600">
+                  <Clock className="size-3 animate-pulse" />
+                  Pending — validation is running
+                </span>
+              </div>
+            ) : (
             <div className="space-y-2">
               <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
                 Validation
@@ -236,6 +256,7 @@ function EntryRow({ entry }: { entry: GenerationValidationEntry }) {
                 </div>
               )}
             </div>
+            )
           ) : entry.success ? (
             <div className="flex items-center gap-2 text-xs text-zinc-400">
               <HelpCircle className="size-3.5" />
@@ -274,6 +295,7 @@ export function AdminGenerationValidations() {
     return entries.filter((e) => {
       if (validationFilter === "missing" && e.validationId !== null) return false;
       if (validationFilter === "invalid" && e.isValid !== false) return false;
+      if (validationFilter === "pending" && e.validationStatus !== "pending") return false;
       if (validationFilter === "issues" && (e.validationIssues?.length ?? 0) === 0)
         return false;
       return true;
@@ -312,6 +334,9 @@ export function AdminGenerationValidations() {
   ).length;
   const issuesCount = entries.filter(
     (e) => (e.validationIssues?.length ?? 0) > 0,
+  ).length;
+  const pendingCount = entries.filter(
+    (e) => e.validationStatus === "pending",
   ).length;
 
   return (
@@ -385,6 +410,26 @@ export function AdminGenerationValidations() {
             <HelpCircle className="size-3" />
             {missingValidationCount} missing validation
           </button>
+          {pendingCount > 0 && (
+            <button
+              onClick={() => {
+                setValidationFilter("pending");
+                setAppliedFilters((prev) => ({
+                  ...prev,
+                  validationStatus: "pending",
+                }));
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                appliedFilters.validationStatus === "pending"
+                  ? "bg-zinc-800 text-white"
+                  : "bg-blue-50 text-blue-600 hover:bg-blue-100",
+              )}
+            >
+              <Clock className="size-3" />
+              {pendingCount} pending
+            </button>
+          )}
           {issuesCount > 0 && (
             <button
               onClick={() => {
@@ -452,6 +497,7 @@ export function AdminGenerationValidations() {
           >
             <option value="all">All</option>
             <option value="missing">Missing validation</option>
+            <option value="pending">Pending</option>
             <option value="invalid">Invalid only</option>
             <option value="issues">Has issues</option>
           </select>

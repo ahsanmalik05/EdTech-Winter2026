@@ -159,6 +159,7 @@ export const getAdminGenerationValidations = async (
         isValid: template_validations.isValid,
         validationIssues: template_validations.issues,
         validationModel: template_validations.model,
+        validationStatus: template_validations.status,
         validatedAt: template_validations.validatedAt,
       })
       .from(template_generation_log)

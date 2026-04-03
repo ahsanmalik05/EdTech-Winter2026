@@ -71,23 +71,14 @@ export async function validateTranslation(
   // Score how similar the back-translation is to the original
   const similarityResult = await scoreSimilarity(original, backTranslated);
 
-  // Build overall confidence combining LLM score + structural signals
+  // Build overall confidence from LLM similarity score only;
+  // structural checks are informational, not factored into the score.
   let overallConfidence: number;
   if (similarityResult !== null) {
-    const structureBonus =
-      structuralChecks.sectionCountMatch && structuralChecks.headersIntact
-        ? 0.05
-        : -0.05;
-    overallConfidence = Math.min(
-      1,
-      Math.max(0, similarityResult.score + structureBonus)
-    );
+    overallConfidence = Math.min(1, Math.max(0, similarityResult.score));
   } else {
     // Fallback if LLM scoring failed entirely
-    overallConfidence =
-      structuralChecks.sectionCountMatch && structuralChecks.headersIntact
-        ? 0.7
-        : 0.4;
+    overallConfidence = 0.5;
   }
 
   return {

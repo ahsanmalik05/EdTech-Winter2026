@@ -4,7 +4,7 @@ import { PDFViewer, pdf } from '@react-pdf/renderer';
 import { cn } from '../lib/utils';
 import { api } from '../api/api';
 import { TemplatePDF } from '../components/TemplatePDF';
-import { useQuery, invalidateQuery } from '../api/useQuery';
+import { useQuery, invalidateQuery, invalidateQueries } from '../api/useQuery';
 
 interface TemplateSections {
   introduction: string;
@@ -167,6 +167,7 @@ export function TemplateGenerator({ onBusyChange }: { onBusyChange?: (busy: bool
 
       invalidateQuery('/api/template-generation-log');
       invalidateQuery('/api/admin/stats');
+      invalidateQueries('/api/admin/generation-validations');
 
       const created = res.data as TemplateResponse;
       mutateTemplates((prev) => [created, ...(prev ?? [])]);

@@ -69,6 +69,7 @@ const transitionProps = {
 const NAV_ITEMS = [
   {
     section: "main",
+    label: "Tools",
     items: [
       { to: "/translate", label: "Translate", icon: Languages },
       { to: "/generate", label: "Generate", icon: Sparkles },
@@ -76,13 +77,15 @@ const NAV_ITEMS = [
   },
   {
     section: "history",
+    label: "My Activity",
     items: [
-      { to: "/logs", label: "Translation Logs", icon: ScrollText },
-      { to: "/template-logs", label: "Template Logs", icon: ScrollText },
+      { to: "/logs", label: "My Translations", icon: ScrollText },
+      { to: "/template-logs", label: "My Generations", icon: ScrollText },
     ],
   },
   {
     section: "config",
+    label: "Settings",
     items: [
       { to: "/languages", label: "Languages", icon: Globe },
     ],
@@ -92,6 +95,7 @@ const NAV_ITEMS = [
 const ADMIN_NAV_ITEMS = [
   {
     section: "admin",
+    label: "Admin",
     items: [
       { to: "/admin/stats", label: "Platform Stats", icon: BarChart3 },
       { to: "/admin/translation-validations", label: "Translation QA", icon: ClipboardCheck },
@@ -154,10 +158,10 @@ export function AppSidebar({ userEmail, userRole, apiKey, onLogout }: AppSidebar
                     {navItems.map((section, sIdx) => (
                       <div key={section.section}>
                         {sIdx > 0 && <Separator className="my-2 w-full" />}
-                        {section.section === 'admin' && !isCollapsed && (
+                        {!isCollapsed && section.label && (
                           <div className="flex items-center gap-1.5 px-2 py-1">
-                            <ShieldCheck className="size-3 text-zinc-300" />
-                            <span className="text-[10px] font-medium text-zinc-300 uppercase tracking-wider">Admin</span>
+                            {section.section === 'admin' && <ShieldCheck className="size-3 text-zinc-300" />}
+                            <span className="text-[10px] font-medium text-zinc-300 uppercase tracking-wider">{section.label}</span>
                           </div>
                         )}
                         {section.items.map((item) => {

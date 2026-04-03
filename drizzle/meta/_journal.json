@@ -57,6 +57,13 @@
       "when": 1775180000000,
       "tag": "0007_admin_role",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775270000000,
+      "tag": "0008_validation_pending_status",
+      "breakpoints": true
     }
   ]
 }

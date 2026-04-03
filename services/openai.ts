@@ -2,7 +2,11 @@ import { generateObject, generateText, Output } from "ai";
 import { openai } from "@ai-sdk/openai";
 import type { TemplateSections } from "../types/templates.js";
 
-import { logTemplateValidation } from "./template_validation_log.js";
+import {
+  createPendingTemplateValidation,
+  completeTemplateValidation,
+  failTemplateValidation,
+} from "./template_validation_log.js";
 
 import {
   normalizedInputSchema,
@@ -102,34 +106,40 @@ export function validateInBackground(
   sections: TemplateSections,
   modelId: string,
 ) {
-  generateText({
-    model: openai(modelId),
-    output: Output.object({
-      schema: validationSchema,
-    }),
-    system: VALIDATION_SYSTEM,
-    prompt: `Subject: ${subject}\nTopic: ${topic}\nGrade Level: ${gradeLevel}\n\nINTRODUCTION:\n${sections.introduction}\n\nMODEL SELF-ASSESSMENT:\n${sections.model_assessment}\n\nSELF-REVIEW:\n${sections.self_review}`,
-  })
-    .then(({ output: validation }) => {
-      if (validation) {
-        void logTemplateValidation({
-          templateId,
-          generationLogId,
-          isValid: validation.valid,
-          issues: validation.issues,
-          model: modelId,
-        });
-        if (!validation.valid) {
-          console.warn(
-            `Template validation issues [${subject}/${topic}]:`,
-            validation.issues,
-          );
-        }
-      }
+  createPendingTemplateValidation({
+    templateId,
+    generationLogId,
+    model: modelId,
+  }).then((validationId) => {
+    generateText({
+      model: openai(modelId),
+      output: Output.object({
+        schema: validationSchema,
+      }),
+      system: VALIDATION_SYSTEM,
+      prompt: `Subject: ${subject}\nTopic: ${topic}\nGrade Level: ${gradeLevel}\n\nINTRODUCTION:\n${sections.introduction}\n\nMODEL SELF-ASSESSMENT:\n${sections.model_assessment}\n\nSELF-REVIEW:\n${sections.self_review}`,
     })
-    .catch((err) => {
-      console.error("Background validation failed:", err);
-    });
+      .then(({ output: validation }) => {
+        if (validation && validationId) {
+          void completeTemplateValidation(validationId, {
+            isValid: validation.valid,
+            issues: validation.issues,
+          });
+          if (!validation.valid) {
+            console.warn(
+              `Template validation issues [${subject}/${topic}]:`,
+              validation.issues,
+            );
+          }
+        }
+      })
+      .catch((err) => {
+        console.error("Background validation failed:", err);
+        if (validationId) {
+          void failTemplateValidation(validationId);
+        }
+      });
+  });
 }
 
 export interface GenerationResult {

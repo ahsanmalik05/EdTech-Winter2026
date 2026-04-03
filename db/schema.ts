@@ -184,9 +184,10 @@ export const template_validations = pgTable("template_validations", {
     () => template_generation_log.id,
     { onDelete: "set null" },
   ),
-  isValid: boolean("is_valid").notNull(),
+  isValid: boolean("is_valid"),
   issues: jsonb("issues").$type<string[]>().default([]).notNull(),
   model: varchar("model", { length: 255 }),
+  status: varchar("status", { length: 20 }).notNull().default("completed"),
   validatedAt: timestamp("validated_at").defaultNow().notNull(),
 });
 
