@@ -498,6 +498,8 @@ List all API keys for the authenticated user
 }
 ```
 
+---
+
 #### 3. Get API Key Details
 Retrieve information about a specific API key
 
