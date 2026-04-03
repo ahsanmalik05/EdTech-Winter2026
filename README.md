@@ -27,8 +27,47 @@ The API is deployed and live at:
 
 **https://edtech-winter2026-production.up.railway.app/**
 
-If you want to use or test the application without any local setup, just visit the link above and register an account. No API keys or installation
-required.
+No local setup is required. Follow the steps below to get started.
+
+> **Note for TAs:** A pre-made admin account has been set up for you — credentials are provided separately. You are welcome to create your own account instead by following the steps below.
+
+---
+
+### Step 1 — Create an account
+
+Visit the link above and click **Sign Up**. Enter your email address and a password to register.
+
+After submitting, you will receive a verification email from `onboarding@metytech.online` with a **Verify Email** button. Click it to confirm your address. Once verified, you will see a "You are verified" confirmation page. You can then sign in.
+
+---
+
+### Step 2 — Create an API key
+
+After signing in you will be prompted to create your first API key. Navigate to the **API Keys** page from the sidebar if you are not redirected there automatically.
+
+1. Enter a label for your key (e.g. `Development`) in the **Create New Key** field and click **+ Create**.
+2. Your full key is shown exactly once — copy it somewhere safe. It cannot be retrieved again.
+3. Click **Use This Key** (or select the radio button next to the key in the list) to set it as your active key. The selected key is highlighted in green and will be used automatically by the demo interface for all requests.
+
+---
+
+### Step 3 — Explore the features
+
+With an active API key set, you can use all features from the sidebar:
+
+| Feature | Description |
+|---------|-------------|
+| **Translate** | Paste text and select a target language to translate it. Each result includes a confidence score. |
+| **Translation Studio** | Upload one or more PDF files, pick a target language and grade level, and receive translated versions as downloadable PDFs. Sample CSA templates are included in the root of the repository (`self-assessment-example-for-history.pdf`, `self-assessment-template-for-math (1).pdf`, `self-assessment-template-for-reading.pdf`) and can be used directly for testing. |
+| **Generate Template** | Provide a subject, topic, and grade level to generate a CSA self-assessment template. Templates can be previewed and downloaded as PDFs. |
+| **Templates** | Browse and manage all previously generated CSA templates. |
+| **Translation Log** | View a history of all text translations made under your account. |
+| **Template Log** | View a history of all template generation requests. |
+| **Translation Stats** | See usage and cost statistics for your translations. |
+| **Languages** | Browse the full list of supported translation languages (130+). |
+| **API Keys** | Create, manage, or delete your API keys. |
+
+---
 
 For developers who want to run the project locally, please continue reading below.
 
