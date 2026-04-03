@@ -10,7 +10,7 @@ import {
   eq,
 } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { translation_log, languages, templates } from "../db/schema.js";
+import { translation_log, languages, templates, template_generation_log } from "../db/schema.js";
 import type {
   LogTranslationParams,
   TranslationStats,
@@ -204,13 +204,18 @@ async function fetchTopUsers() {
 
 async function fetchCostStats() {
   const [row] = await db
-    .select({ totalCost: sum(translation_log.costUsd) })
+    .select({ totalCost: sql<string>`COALESCE(SUM(${translation_log.costUsd}), 0)` })
     .from(translation_log);
-  const raw = row?.totalCost;
-  const totalCostUsd = raw !== null && raw !== undefined ? Number(raw) : null;
   return {
-    totalCostUsd: totalCostUsd && totalCostUsd > 0 ? totalCostUsd : null,
+    totalCostUsd: Number(row?.totalCost ?? 0),
   };
+}
+
+async function fetchGenCostStats() {
+  const [row] = await db
+    .select({ totalCost: sql<string>`COALESCE(SUM(${template_generation_log.costUsd}), 0)` })
+    .from(template_generation_log);
+  return { totalGenCostUsd: Number(row?.totalCost ?? 0) };
 }
 
 async function fetchWorksheetStats() {
@@ -359,6 +364,7 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
     const topUsers = await fetchTopUsers();
     const worksheetStats = await fetchWorksheetStats();
     const costStats = await fetchCostStats();
+    const genCostStats = await fetchGenCostStats();
     const templatesByDay = await fetchTemplatesByDay();
     const topSubjectTopicPairs = await fetchTopSubjectTopicPairs();
     const templatesPerUser = await fetchTemplatesPerUser();
@@ -379,6 +385,7 @@ export async function getTranslationStatsFromDb(): Promise<TranslationStats> {
       cacheHitRate,
       worksheetStats,
       ...costStats,
+      ...genCostStats,
       templatesByDay,
       topSubjectTopicPairs,
       templatesPerUser,

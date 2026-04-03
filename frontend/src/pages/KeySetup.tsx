@@ -311,7 +311,7 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
 
                   {/* Label + key string */}
                   <div className="min-w-0 flex-1">
-                    <p className={cn('text-sm font-medium leading-none', isActive ? 'text-zinc-900' : 'text-zinc-900')}>
+                    <p className={cn('text-sm font-medium leading-none', canActivate ? 'text-zinc-900' : 'text-zinc-400')}>
                       {k.label}
                     </p>
                     <p
@@ -328,6 +328,13 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
                       className="text-[10px] font-semibold tracking-[0.14em] uppercase text-zinc-700 shrink-0"
                     >
                       Active
+                    </span>
+                  )}
+
+                  {/* Not available locally */}
+                  {!canActivate && (
+                    <span className="text-[10px] font-medium tracking-[0.1em] uppercase text-zinc-400 bg-zinc-100 rounded px-2 py-1 shrink-0">
+                      Key not stored locally
                     </span>
                   )}
 

@@ -35,6 +35,7 @@ export interface TranslationStats {
   topUsers: { userId: number; translations: number }[];
   cacheHitRate: number | null;
   totalCostUsd: number | null;
+  totalGenCostUsd: number | null;
   worksheetStats: {
     totalGenerated: number;
     generatedToday: number;

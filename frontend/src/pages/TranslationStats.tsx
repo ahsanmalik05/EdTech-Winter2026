@@ -29,6 +29,7 @@ interface TranslationStats {
   topUsers: { userId: number; translations: number }[];
   cacheHitRate: null;
   totalCostUsd: number | null;
+  totalGenCostUsd: number | null;
   worksheetStats: {
     totalGenerated: number;
     generatedToday: number;
@@ -137,7 +138,8 @@ export function TranslationStats() {
   };
 
   const fmtCost = (n: number | null | undefined) => {
-    if (n === null || n === undefined || n === 0) return "—";
+    if (n === null || n === undefined) return "—";
+    if (n === 0) return "$0.00";
     if (n < 0.01) return `$${n.toFixed(4)}`;
     if (n < 1) return `$${n.toFixed(3)}`;
     return `$${n.toFixed(2)}`;
@@ -209,8 +211,9 @@ export function TranslationStats() {
               icon={<Zap className="size-4 text-zinc-400" />}
             />
             <StatCard
-              label="Est. Cost"
+              label="Total Cost"
               value={fmtCost(stats.totalCostUsd)}
+              sub="Cohere Command-A Translate is free"
               icon={<DollarSign className="size-4 text-zinc-400" />}
             />
           </div>
@@ -327,7 +330,7 @@ export function TranslationStats() {
                 </h3>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 lg:grid-cols-3 gap-3">
                 <StatCard
                   label="Worksheets Generated"
                   value={fmt(stats.worksheetStats.totalGenerated)}
@@ -339,6 +342,11 @@ export function TranslationStats() {
                   value={fmt(stats.worksheetStats.bySubject.length)}
                   sub="unique subjects"
                   icon={<BookOpen className="size-4 text-zinc-400" />}
+                />
+                <StatCard
+                  label="Total Cost"
+                  value={fmtCost(stats.totalGenCostUsd)}
+                  icon={<DollarSign className="size-4 text-zinc-400" />}
                 />
               </div>
 

@@ -139,7 +139,7 @@ function AppLayout({
 
         <footer className="border-t border-zinc-100 py-6">
           <div className="mx-auto max-w-5xl px-8 flex items-center justify-between">
-            <p className="text-zinc-300 text-xs">METY Technology — CSC 392 / 492</p>
+            <p className="text-zinc-300 text-xs">METY Technology — CSC 398</p>
             <p className="text-zinc-300 text-xs font-display italic">METY</p>
           </div>
         </footer>
