@@ -5,7 +5,7 @@ import { cn } from '../lib/utils';
 import { getFontFamily } from '../lib/pdfFonts';
 import { api } from '../api/api';
 import { TranslationPDF } from '../components/TranslationPDF';
-import { useQuery, invalidateQuery } from '../api/useQuery';
+import { useQuery, invalidateQuery, invalidateQueries } from '../api/useQuery';
 
 interface Language {
   id: number;
@@ -115,6 +115,8 @@ export function TranslationStudio({ onBusyChange }: TranslationStudioProps) {
         });
 
         invalidateQuery('/api/translation-log');
+        invalidateQuery('/api/admin/stats');
+        invalidateQueries('/api/admin/translation-validations');
 
         setFileStatuses((prev) => ({ ...prev, [file.name]: 'done' }));
         setResults((prev) => ({

@@ -10,26 +10,17 @@ import { db } from './db/index.js';
 
 import authRouter from './routes/auth.js';
 import apiKeysRouter from './routes/api_key.js';
+import adminRouter from './routes/admin.js';
 
 
 import { loadGlossaryCache } from './services/glossary.js';
 import { apiKeyMiddleware } from './middleware/api_key.js';
 import languagesRouter from './routes/languages.js';
 import translateRouter from './routes/translate.js';
-import type { TranslationResponse } from './types/translation.js';
 import templatesRouter from './routes/templates.js';
 import translationLogRouter from './routes/translation_log.js';
 import templateGenerationLogRouter from './routes/template_generation_log.js';
-import type { CohereResponse, ErrorResponse } from './types/response.js';
-import {
-    createRequestId,
-    elapsedMs,
-    hasApiKeyHeader,
-    hasCookieHeader,
-    logError,
-    logInfo,
-    logWarn,
-} from './utils/observability.js';
+import { createRequestId } from './utils/observability.js';
 const { port, nodeEnv, frontendUrl } = config;
 const allowedOrigins = [frontendUrl, 'http://localhost:3000'];
 if (nodeEnv === 'development') {
@@ -57,64 +48,18 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-app.use((req, res, next) => {
-    if (!req.originalUrl.startsWith('/api')) {
-        next();
-        return;
+app.use((req, _res, next) => {
+    if (req.originalUrl.startsWith('/api')) {
+        req.requestId = createRequestId();
     }
-
-    req.requestId = createRequestId();
-    const startedAt = Date.now();
-
-    logInfo('request_started', {
-        requestId: req.requestId,
-        method: req.method,
-        path: req.originalUrl,
-        hasApiKey: hasApiKeyHeader(req),
-        hasCookie: hasCookieHeader(req),
-        origin: req.headers.origin ?? null,
-    });
-
-    const slowRequestTimer = setTimeout(() => {
-        logWarn('request_slow', {
-            requestId: req.requestId,
-            method: req.method,
-            path: req.originalUrl,
-            durationMs: elapsedMs(startedAt),
-            headersSent: res.headersSent,
-        });
-    }, 10000);
-
-    res.on('finish', () => {
-        clearTimeout(slowRequestTimer);
-        logInfo('request_finished', {
-            requestId: req.requestId,
-            method: req.method,
-            path: req.originalUrl,
-            statusCode: res.statusCode,
-            durationMs: elapsedMs(startedAt),
-        });
-    });
-
-    res.on('close', () => {
-        clearTimeout(slowRequestTimer);
-        if (!res.writableEnded) {
-            logWarn('request_closed_early', {
-                requestId: req.requestId,
-                method: req.method,
-                path: req.originalUrl,
-                durationMs: elapsedMs(startedAt),
-            });
-        }
-    });
-
     next();
 });
 
-app.use('/api', apiKeyMiddleware);
-
 app.use("/api/auth", authRouter);
 app.use("/api/keys", apiKeysRouter);
+app.use("/api/admin", adminRouter);
+
+app.use('/api', apiKeyMiddleware);
 app.use("/api/languages", languagesRouter);
 app.use("/api/translate", translateRouter);
 app.use("/api/templates", templatesRouter);
@@ -149,8 +94,6 @@ if (fs.existsSync(frontendIndexPath)) {
 }
 
 async function start() {
-    const dbProbeStartedAt = Date.now();
-    logInfo('startup_db_probe_started', {});
     try {
         await Promise.race([
             db.execute(sql`select 1 as ok`),
@@ -158,13 +101,8 @@ async function start() {
                 setTimeout(() => reject(new Error('Startup DB probe timed out after 5000ms')), 5000),
             ),
         ]);
-        logInfo('startup_db_probe_finished', {
-            durationMs: elapsedMs(dbProbeStartedAt),
-        });
     } catch (error) {
-        logError('startup_db_probe_failed', error, {
-            durationMs: elapsedMs(dbProbeStartedAt),
-        });
+        console.error('Startup DB probe failed:', error);
     }
 
     const termCount = await loadGlossaryCache();
@@ -179,22 +117,14 @@ async function start() {
     app.listen(port, '0.0.0.0', () => {
         console.log(`Server is running on port ${port}`);
     });
-
-    loadGlossaryCache()
-        .then((termCount) => {
-            console.log(`Glossary cache loaded: ${termCount} terms`);
-        })
-        .catch((error) => {
-            console.warn('Glossary cache warmup failed', error);
-        });
 }
 
 process.on('SIGTERM', () => {
-    logWarn('process_sigterm_received', {});
+    console.warn('SIGTERM received');
 });
 
 process.on('SIGINT', () => {
-    logWarn('process_sigint_received', {});
+    console.warn('SIGINT received');
 });
 
 start();

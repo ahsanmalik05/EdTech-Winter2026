@@ -126,6 +126,7 @@ export function TemplateGenerationLog() {
             const hasDetails =
               entry.inputTokenCount !== null ||
               entry.outputTokenCount !== null ||
+              entry.tokenCount !== null ||
               cost !== null;
 
             return (

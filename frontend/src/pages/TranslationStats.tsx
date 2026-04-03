@@ -113,7 +113,7 @@ export function TranslationStats() {
     loading,
     error,
     refetch,
-  } = useQuery<TranslationStats>("/api/translate/stat");
+  } = useQuery<TranslationStats>("/api/admin/stats");
 
   const [subjectFilter, setSubjectFilter] = useState<string>('all');
 
@@ -175,6 +175,11 @@ export function TranslationStats() {
         </div>
       ) : stats ? (
         <div className="flex flex-col gap-8">
+          {/* Translation header */}
+          <div>
+            <h3 className="text-lg font-semibold text-zinc-900">Translations</h3>
+          </div>
+
           {/* Overview cards */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
             <StatCard

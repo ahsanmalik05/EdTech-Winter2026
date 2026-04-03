@@ -293,6 +293,7 @@ export function TranslationLog() {
                     {/* Token + cost breakdown */}
                     {(entry.inputTokenCount !== null ||
                       entry.outputTokenCount !== null ||
+                      entry.tokenCount !== null ||
                       cost) && (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {entry.inputTokenCount !== null && (

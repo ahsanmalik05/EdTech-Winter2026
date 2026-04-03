@@ -5,6 +5,7 @@ import config from "../config/config.js";
 interface AuthRequest extends Request {
   user?: {
     id: number;
+    role: "user" | "admin";
   };
 }
 
@@ -24,9 +25,10 @@ export const authMiddleware = (
       algorithms: ["HS256"],
     }) as {
       id: number;
+      role: "user" | "admin";
     };
 
-    req.user = { id: decoded.id };
+    req.user = { id: decoded.id, role: decoded.role ?? "user" };
     next();
   } catch (error) {
     return res.status(401).json({ error: "Invalid or expired token" });
@@ -46,8 +48,9 @@ export const optionalAuthMiddleware = (
         algorithms: ["HS256"],
       }) as {
         id: number;
+        role: "user" | "admin";
       };
-      req.user = { id: decoded.id };
+      req.user = { id: decoded.id, role: decoded.role ?? "user" };
     }
 
     next();

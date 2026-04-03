@@ -1,27 +1,187 @@
-# EdTech API Documentation
+# METY: CSA Translation & Template API
 
-## Base URL
-```
-http://localhost:3000
-```
+METY is a backend API platform built for [MyEdMaster](https://myedmaster.com), an
+educational research organization developing Cognitive Structure Analysis (CSA)
+self-assessments. CSA is a learning technique that trains students to reflect on four
+types of knowledge (facts, strategies, procedures, and rationales) to identify their
+own strengths and knowledge gaps. Research across the US, Scotland, India, and China
+has shown that students using CSA improve their academic performance by 1.5 to 2.5
+letter grades on average.
 
-## Authentication
+The core problem this platform solves is accessibility. CSA templates are written by
+hand in English, which makes them expensive to produce and inaccessible to
+non-English-speaking students. The API automates two things: generating CSA
+templates for any subject, topic, and grade level using AI, and translating those
+templates into over 130 languages while preserving their educational structure and
+meaning.
 
-Most API endpoints require authentication using one of two methods:
-
-### 1. Session cookie (JWT)
-
-After a successful login, the API sets an `httpOnly` cookie named `token`. The browser sends it automatically on same-site requests when credentials are included (for example `fetch(..., { credentials: 'include' })`).
-
-### 2. API Key
-Include in request header:
-```
-x-api-key: <api_key>
-```
+The platform is designed to be integrated into MyEdMaster's existing systems by other
+partner teams. The frontend included in this repository is just a demo interface. It
+exists only to make the API easier to test and demonstrate.
 
 ---
 
-## Environment variables (email)
+## Quick Start
+
+The API is deployed and live at:
+
+**https://edtech-winter2026-production.up.railway.app/**
+
+No local setup is required. Follow the steps below to get started.
+
+> **Note for TAs:** A pre-made admin account has been set up for you — credentials are provided separately. You are welcome to create your own account instead by following the steps below.
+
+---
+
+### Step 1 — Create an account
+
+Visit the link above and click **Sign Up**. Enter your email address and a password to register.
+
+After submitting, you will receive a verification email from `onboarding@metytech.online` with a **Verify Email** button. Click it to confirm your address. Once verified, you will see a "You are verified" confirmation page. You can then sign in.
+
+---
+
+### Step 2 — Create an API key
+
+After signing in you will be prompted to create your first API key. Navigate to the **API Keys** page from the sidebar if you are not redirected there automatically.
+
+1. Enter a label for your key (e.g. `Development`) in the **Create New Key** field and click **+ Create**.
+2. Your full key is shown exactly once — copy it somewhere safe. It cannot be retrieved again.
+3. Click **Use This Key** (or select the radio button next to the key in the list) to set it as your active key. The selected key is highlighted in green and will be used automatically by the demo interface for all requests.
+
+---
+
+### Step 3 — Explore the features
+
+With an active API key set, you can use all features from the sidebar:
+
+| Feature | Description |
+|---------|-------------|
+| **Translate** | Paste text and select a target language to translate it. Each result includes a confidence score. |
+| **Translation Studio** | Upload one or more PDF files, pick a target language and grade level, and receive translated versions as downloadable PDFs. Sample CSA templates are included in the root of the repository (`self-assessment-example-for-history.pdf`, `self-assessment-template-for-math (1).pdf`, `self-assessment-template-for-reading.pdf`) and can be used directly for testing. |
+| **Generate Template** | Provide a subject, topic, and grade level to generate a CSA self-assessment template. Templates can be previewed and downloaded as PDFs. |
+| **Templates** | Browse and manage all previously generated CSA templates. |
+| **Translation Log** | View a history of all text translations made under your account. |
+| **Template Log** | View a history of all template generation requests. |
+| **Translation Stats** | See usage and cost statistics for your translations. |
+| **Languages** | Browse the full list of supported translation languages (130+). |
+| **API Keys** | Create, manage, or delete your API keys. |
+
+---
+
+For developers who want to run the project locally, please continue reading below.
+
+---
+
+## Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| Node.js + TypeScript | Backend runtime and language |
+| Express.js | HTTP server and API routing |
+| PostgreSQL | Primary database |
+| Drizzle ORM + drizzle-kit | Database queries and schema migrations |
+| Cohere (`command-a-translate-08-2025`) | Primary AI model for PDF translation |
+| OpenAI (`gpt-5-nano`) | CSA template generation and translation fallback |
+| Vercel AI SDK | Structured output and schema-validated AI responses |
+| Multer | PDF upload handling and validation |
+| Railway Bucket (S3-compatible) | PDF archiving after processing |
+| Resend | Transactional email for email verification |
+| React 19 + Vite | Frontend demo interface |
+| Tailwind CSS + Material UI | Frontend styling |
+| Vitest + Supertest | Unit and integration testing |
+| Railway | Production deployment |
+
+---
+
+## Project Structure
+```
+.
+├── app.ts                  # Server entry point — Express setup, middleware, route mounting
+├── config/
+│   └── config.ts           # Environment variable loading and validation
+├── controllers/            # Request handlers — one file per route group
+├── middleware/
+│   ├── api_key.ts          # API key validation middleware
+│   ├── auth.ts             # JWT cookie authentication middleware
+│   └── upload.ts           # Multer PDF upload configuration
+├── routes/                 # Express routers — wire URLs to controllers
+├── services/               # Business logic and external integrations
+│   ├── cohere.ts           # Cohere AI — translation and embeddings
+│   ├── openai.ts           # OpenAI — template generation and similarity scoring
+│   ├── pdf.ts              # PDF text extraction and structure parsing
+│   ├── glossary.ts         # In-memory glossary cache and term matching
+│   ├── templates.ts        # CSA template generation orchestration
+│   ├── validate.ts         # Translation back-check and confidence scoring
+│   ├── translation_log.ts  # Translation logging and retrieval
+│   ├── translation_cache.ts# Translation result caching
+│   ├── bucket.ts           # Railway S3-compatible PDF archiving
+│   ├── mailer.ts           # Email sending via Resend
+│   └── email_verification.ts # Email verification token handling
+├── db/
+│   ├── index.ts            # Database connection
+│   └── schema.ts           # Drizzle ORM table definitions
+├── drizzle/                # Auto-generated SQL migration files
+├── types/                  # Shared TypeScript interfaces and types
+├── utils/
+│   └── cost.ts             # AI token cost calculation helpers
+├── scripts/
+│   ├── seed-glossary.ts    # Seeds glossary terms into the database
+│   └── seed-languages.ts   # Seeds supported languages into the database
+├── __tests__/              # Vitest unit and integration tests
+├── frontend/               # Demo React frontend (not a production UI)
+│   └── src/
+│       ├── api/            # Axios client and useQuery caching hook
+│       ├── components/     # Shared UI components
+│       ├── pages/          # Page-level components
+│       ├── context/        # React context providers (auth)
+│       ├── lib/            # Utility functions and PDF font helpers
+│       └── services/       # Frontend API service functions
+├── render.yaml             # Render deployment configuration
+└── architecture.xml        # Detailed technical architecture reference
+```
+## Prerequisites
+
+Before running the project locally, make sure you have the following installed
+and available:
+
+- **Node.js** v18 or higher ([nodejs.org](https://nodejs.org))
+- **npm** v8 or higher (comes bundled with Node.js)
+- **PostgreSQL** (a running instance with a database created for the project)
+
+You will also need accounts and API keys for the following external services:
+
+- **Cohere** for PDF translation ([cohere.com](https://cohere.com))
+- **OpenAI** for template generation and translation fallback
+  ([platform.openai.com](https://platform.openai.com))
+- **Resend** for email verification emails ([resend.com](https://resend.com))
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the project root before running locally. The
+variables are listed below.
+
+### Core
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PORT` | No | Port the server listens on. Defaults to `3000`. |
+| `NODE_ENV` | No | Set to `development` or `production`. |
+| `DATABASE_URL` | Yes | PostgreSQL connection string. |
+| `JWT_SECRET` | Yes | Secret for signing JWT tokens. Must be at least 32 characters. |
+| `FRONTEND_URL` | No | CORS allowed origin. Defaults to `http://localhost:5173`. |
+
+### AI Services
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `COHERE_API_KEY` | Yes | API key from [cohere.com](https://cohere.com). Used for translation. |
+| `OPENAI_API_KEY` | Yes | API key from [platform.openai.com](https://platform.openai.com). Used for template generation and translation fallback. |
+
+
+### Email
 
 Verification emails are sent with [Resend](https://resend.com) over HTTPS (SMTP is not used).
 
@@ -32,35 +192,123 @@ Verification emails are sent with [Resend](https://resend.com) over HTTPS (SMTP 
 
 **Sandbox / testing:** Addresses on `@resend.dev` (including the default above) are for testing only. Resend only delivers to the account owner’s email until you verify a custom domain. The server logs a warning at startup when `MAIL_FROM` contains `@resend.dev`.
 
-Other required configuration includes `JWT_SECRET` (min 32 characters) and `DATABASE_URL`; see your deployment platform or local `.env`.
+### Storage (Optional)
+
+PDF files are archived to a Railway S3-compatible bucket on a best-effort
+basis. However, the application should work without these; PDFs are processed and deleted
+locally if no bucket is configured.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `BUCKET` | No | Railway bucket name. |
+| `ENDPOINT` | No | Railway bucket S3 endpoint URL. |
+| `ACCESS_KEY_ID` | No | Railway bucket access key ID. |
+| `SECRET_ACCESS_KEY` | No | Railway bucket secret access key. |
+| `REGION` | No | Bucket region. Defaults to `auto`. |
 
 ---
 
-## Public Endpoints (No Authentication Required)
+## Running Locally
 
-### 1. Translation Service
-Translate text to French using Cohere AI
+### Backend
 
-**Endpoint:** `GET /translation`
-
-**Query Parameters:**
-- `text` (required): Text to translate
-
-**Response:**
-```json
-{
-  "originalLanguage": "English",
-  "targetLanguage": "French",
-  "originalText": "Hello",
-  "translatedText": "Bonjour"
-}
+1. Clone the repository and install dependencies:
+```bash
+git clone https://github.com/CSC392-CSC492-Building-AI-ML-systems/EdTech-Winter2026.git
+cd EdTech-Winter2026
+npm install
 ```
 
+2. Create a `.env` file in the project root and fill in the environment
+variables listed in the previous section.
+
+3. Set up the database by running migrations:
+```bash
+npm run db:migrate
+```
+
+4. Seed the glossary terms and supported languages:
+```bash
+npm run db:seed-glossary
+npm run db:seed-languages
+```
+
+5. Start the backend server:
+```bash
+npm run dev
+```
+
+The server will start on `http://localhost:3000`.
+
+### Frontend (optional)
+
+The frontend is a demo interface and is not required to use the API. If you
+want to run it locally:
+
+1. In a separate terminal, navigate to the frontend folder:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+2. The frontend will be available at `http://localhost:5173`.
+
+### Running Tests
+```bash
+npm test
+```
+
+### Database Utilities
+
+| Command | Description |
+|---------|-------------|
+| `npm run db:generate` | Generate new migration files after schema changes |
+| `npm run db:migrate` | Apply pending migrations to the database |
+| `npm run db:push` | Push schema changes directly without migrations |
+| `npm run db:studio` | Open Drizzle Studio |
+| `npm run db:seed-glossary` | Seed the glossary terms |
+| `npm run db:seed-languages` | Seed the supported languages |
+
 ---
 
-## Authentication Endpoints
+## API Reference
 
-### 1. Register User
+### Base URL
+```
+http://localhost:3000
+```
+
+For the deployed instance: `https://edtech-winter2026-production.up.railway.app`
+
+---
+
+### Authentication
+
+Most API endpoints require authentication using one of two methods:
+
+#### 1. Session cookie (JWT)
+
+After a successful login, the API sets an `httpOnly` cookie named `token`. The browser sends it automatically on same-site requests when credentials are included (for example `fetch(..., { credentials: 'include' })`).
+
+#### 2. API Key
+Include in request header:
+```
+x-api-key: <api_key>
+```
+
+#### Admin role
+
+Some endpoints are restricted to admin users. Admin accounts have
+`role: "admin"` in the database. New accounts default to `role: "user"`.
+Admin role must be assigned directly in the database — there is no
+self-serve promotion endpoint.
+
+---
+
+### Authentication Endpoints
+
+#### 1. Register User
 Create a new user account
 
 **Endpoint:** `POST /api/auth/register`
@@ -88,7 +336,9 @@ Create a new user account
 
 A verification link is emailed when `RESEND_API_KEY` and `MAIL_FROM` are configured and Resend accepts the send. If the send fails after the user is created, the response is still `201` with the same shape; use `POST /api/auth/resend-verification` to try again.
 
-### 2. Login User
+---
+
+#### 2. Login User
 Authenticate. On success, the server sets an `httpOnly` cookie `token` (JWT). The JSON body does not include the token.
 
 **Endpoint:** `POST /api/auth/login`
@@ -119,7 +369,9 @@ Authenticate. On success, the server sets an `httpOnly` cookie `token` (JWT). Th
 }
 ```
 
-### 3. Resend verification email
+---
+
+#### 3. Resend verification email
 
 **Endpoint:** `POST /api/auth/resend-verification`
 
@@ -146,11 +398,15 @@ Authenticate. On success, the server sets an `httpOnly` cookie `token` (JWT). Th
 
 **Response (500)** — when Resend rejects the send or another server error occurs during resend.
 
+---
+
 ### 4. Verify email (link in email)
 
 **Endpoint:** `GET /api/auth/verify-email?token=<token>`
 
 Redirects to the frontend result page with `status` and optional `message` query parameters.
+
+---
 
 ### 5. Get Current User
 Retrieve authenticated user information. Uses the `token` cookie set at login.
@@ -171,9 +427,9 @@ Retrieve authenticated user information. Uses the `token` cookie set at login.
 
 ---
 
-## API Keys Endpoints
+### API Keys Endpoints
 
-### 1. Create API Key
+#### 1. Create API Key
 Generate a new API key for programmatic access
 
 **Endpoint:** `POST /api/keys`
@@ -184,9 +440,12 @@ Generate a new API key for programmatic access
 ```json
 {
   "label": "My API Key",
-  "scopes": ["read", "write"]
+  "scopes": ["read", "translate", "write"]
 }
 ```
+
+Valid scopes are `read`, `translate`, and `write`. The full key is shown
+exactly once on creation and cannot be retrieved again.
 
 **Response (201):**
 ```json
@@ -200,7 +459,7 @@ Generate a new API key for programmatic access
 }
 ```
 
-### 2. Get All API Keys
+#### 2. Get All API Keys
 List all API keys for the authenticated user
 
 **Endpoint:** `GET /api/keys`
@@ -222,7 +481,7 @@ List all API keys for the authenticated user
 }
 ```
 
-### 3. Get API Key Details
+#### 3. Get API Key Details
 Retrieve information about a specific API key
 
 **Endpoint:** `GET /api/keys/:id`
@@ -245,7 +504,9 @@ x-api-key: <api_key>
 }
 ```
 
-### 4. Update API Key
+---
+
+#### 4. Update API Key
 Modify an existing API key's label or scopes
 
 **Endpoint:** `PATCH /api/keys/:id`
@@ -271,7 +532,9 @@ Modify an existing API key's label or scopes
 }
 ```
 
-### 5. Delete API Key
+---
+
+#### 5. Delete API Key
 Remove an API key
 
 **Endpoint:** `DELETE /api/keys/:id`
@@ -287,137 +550,327 @@ Remove an API key
 
 ---
 
-## Classroom Endpoints
+### Language Endpoints
 
-### 1. Get Classes by Teacher ID
-Retrieve all classes owned or taught by a teacher
+All endpoints require authentication.
 
-**Endpoint:** `GET /api/classrooms/teacher/:teacherId`
+#### List languages
 
-**Headers:**
+**Endpoint:** `GET /api/languages`
+
+**Response (200):**
+```json
+[
+  { "id": 1, "name": "French", "code": "fr" },
+  { "id": 2, "name": "Spanish", "code": "es" }
+]
 ```
-x-api-key: <api_key>
+
+---
+
+#### Search languages
+
+**Endpoint:** `GET /api/languages/search?code=fr`
+
+**Endpoint:** `GET /api/languages/search?name=French`
+
+---
+
+#### Add language
+
+**Endpoint:** `POST /api/languages`
+
+**Request body:**
+```json
+{
+  "name": "Japanese",
+  "code": "ja"
+}
 ```
+
+---
+
+#### Delete language
+
+**Endpoint:** `DELETE /api/languages/:id`
+
+---
+
+
+### Template Endpoints
+
+All endpoints require authentication.
+
+#### Generate a CSA template
+
+Uses OpenAI `gpt-5-nano` to generate a full three-section CSA
+self-assessment script for a given subject, topic, and grade level.
+
+**Endpoint:** `POST /api/templates/generate`
+
+**Request body:**
+```json
+{
+  "subject": "Mathematics",
+  "topic": "Two-Step Equations",
+  "gradeLevel": "8th Grade"
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": 1,
+  "subject": "Mathematics",
+  "topic": "Two-Step Equations",
+  "gradeLevel": "8th Grade",
+  "version": 1,
+  "isActive": true,
+  "sections": {
+    "introduction": "...",
+    "model_assessment": "...",
+    "self_review": "..."
+  },
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
+```
+
+---
+
+#### List templates
+
+**Endpoint:** `GET /api/templates`
+
+Optional query parameters: `?subject=`, `?gradeLevel=`, `?isActive=`
+
+---
+
+#### Get template by ID
+
+**Endpoint:** `GET /api/templates/:id`
+
+---
+
+#### Update template
+
+**Endpoint:** `PATCH /api/templates/:id`
+
+**Request body:**
+```json
+{
+  "subject": "Mathematics",
+  "topic": "Three-Step Equations",
+  "gradeLevel": "9th Grade",
+  "sections": {
+    "introduction": "Updated introduction text"
+  }
+}
+```
+
+---
+
+#### Deactivate template
+
+Soft-deletes the template by setting `isActive` to `false`.
+
+**Endpoint:** `DELETE /api/templates/:id`
+
+---
+
+### Translation Endpoints
+
+All endpoints require authentication. PDF files must be uploaded as
+`multipart/form-data`. Maximum file size is 10 MB per PDF.
+
+#### Translate a single PDF
+
+**Endpoint:** `POST /api/translate/pdf`
+
+**Form fields:**
+- `pdf` - the PDF file
+- `language` - target language name (e.g. `French`)
+- `gradeLevel` - optional grade level for vocabulary adjustment
 
 **Response (200):**
 ```json
 {
-  "classes": [
-    {
-      "id": 1,
-      "name": "Advanced JavaScript",
-      "classCode": "ADV-JS-2024",
-      "ownerUserId": 1,
-      "createdAt": "2024-01-01T08:00:00Z",
-      "updatedAt": "2024-01-15T10:30:00Z"
+  "originalName": "template.pdf",
+  "targetLanguage": "French",
+  "extractedText": "...",
+  "translatedText": "..."
+}
+```
+
+---
+
+#### Translate a single PDF with streaming
+
+Returns a stream of Server-Sent Events (SSE) showing real-time progress.
+
+**Endpoint:** `POST /api/translate/pdf/stream`
+
+**Form fields:** same as above.
+
+**SSE events:**
+
+| Event | Data | When |
+|-------|------|------|
+| `status` | `{ step: "extracting" }` | PDF extraction begins |
+| `extracted` | `{ extractedText }` | Extraction complete |
+| `status` | `{ step: "translating" }` | Translation begins |
+| `translated` | `{ translatedText }` | Translation complete |
+| `complete` | `{}` | Stream finished |
+| `error` | `{ error }` | Something went wrong |
+
+---
+
+#### Batch translate multiple PDFs
+
+**Endpoint:** `POST /api/translate/batch`
+
+**Form fields:**
+- `pdfs` - one or more PDF files (up to 10)
+- `targetLanguage` - target language name
+- `gradeLevel` - optional
+
+**Response (200):**
+```json
+{
+  "results": {
+    "template.pdf": {
+      "translatedText": "...",
+      "tokenCount": 1234
     }
-  ]
+  }
 }
 ```
 
-### 2. Get Classes by Student ID
-Retrieve all classes the student is enrolled in
+---
 
-**Endpoint:** `GET /api/classrooms/student/:studentId`
+#### Batch translate with streaming
 
-**Headers:**
-```
-x-api-key: <api_key>
-```
+Returns SSE progress events for each file as it completes.
+
+**Endpoint:** `POST /api/translate/batch/stream`
+
+**Form fields:** same as batch above.
+
+**SSE events:**
+
+| Event | Data | When |
+|-------|------|------|
+| `status` | `{ totalFiles }` | Stream starts |
+| `extracting` | `{ fileName }` | Extraction begins per file |
+| `translating` | `{ fileName }` | Translation begins per file |
+| `item_done` | `{ fileName, translatedText }` | File complete |
+| `item_error` | `{ fileName, error }` | File failed |
+| `complete` | `{ totalFiles, successCount }` | All files done |
+| `error` | `{ error }` | Fatal failure |
+
+---
+
+#### Validate a translation
+
+Back-translates the translated text to English using Cohere, then scores
+semantic similarity against the original using OpenAI. Also checks
+structural preservation.
+
+**Endpoint:** `POST /api/translate/validate`
+
+**Form fields:**
+- `original` - the original PDF file
+- `translated` - the translated PDF file
+- `targetLanguage` - the language the translated file is in (e.g. `French`)
 
 **Response (200):**
 ```json
 {
-  "classes": [
-    {
-      "id": 1,
-      "name": "Advanced JavaScript",
-      "classCode": "ADV-JS-2024",
-      "ownerUserId": 1,
-      "createdAt": "2024-01-01T08:00:00Z",
-      "updatedAt": "2024-01-15T10:30:00Z"
-    }
-  ]
+  "backTranslated": "...",
+  "similarityScore": 0.95,
+  "similarityReasoning": "Meaning is fully preserved with only minor wording differences.",
+  "structuralChecks": {
+    "sectionCountMatch": true,
+    "originalSectionCount": 5,
+    "translatedSectionCount": 5,
+    "headersIntact": true
+  },
+  "overallConfidence": 1.0
 }
 ```
 
 ---
 
-## Worksheet Endpoints
+#### Get translation statistics
 
-### 1. Get Worksheets by Title
-Search for worksheets by exact title match
+**Endpoint:** `GET /api/translate/stat`
 
-**Endpoint:** `GET /api/worksheets/title/:title`
-
-**Headers:**
-```
-x-api-key: <api_key>
-```
-
-**Response (200):**
-```json
-{
-  "worksheets": [
-    {
-      "id": 1,
-      "title": "Quadratic Equations",
-      "content": "...",
-      "classId": 1,
-      "createdAt": "2024-01-10T09:00:00Z",
-      "updatedAt": "2024-01-15T10:30:00Z"
-    }
-  ]
-}
-```
+Returns aggregated usage statistics across all translations.
 
 ---
 
-## AI Endpoints
+### Translation Log Endpoints
 
-### 1. Cohere Chat Service
-Send a message to Cohere AI and receive a response
+All endpoints require authentication.
 
-**Endpoint:** `GET /cohere/:message`
+#### Get all translation logs
 
-**Headers:**
-```
-x-api-key: <api_key>
-```
+**Endpoint:** `GET /api/translation-log`
 
-**URL Parameters:**
-- `message` (required): Message to send to Cohere AI
+#### Filter logs by language
 
-**Response (200):**
-```json
-{
-  "message": "Hello, how are you?",
-  "response": "I'm doing well, thank you for asking!"
-}
-```
+**Endpoint:** `GET /api/translation-log/filter?target_language=French`
+
+#### Get logs by date range
+
+**Endpoint:** `GET /api/translation-log/range?start=2024-01-01&end=2024-12-31`
+
+#### Delete a log entry
+
+**Endpoint:** `DELETE /api/translation-log/:id`
 
 ---
 
-## Test Endpoint
+### Template Generation Log Endpoints
 
-### Health Check
-Simple test endpoint to verify server connectivity
+#### Get all template generation logs
 
-**Endpoint:** `GET /test`
+**Endpoint:** `GET /api/template-generation-log`
 
-**Headers:**
-```
-x-api-key: <api_key>
-```
-
-**Response:**
-```
-Test
-```
+Returns a log of all template generation attempts including success/failure
+status, model used, token count, and latency.
 
 ---
 
-## Error Responses
+### Admin Endpoints
+
+All endpoints require authentication and an admin role. Requests from
+non-admin users receive a `403 Forbidden` response.
+
+#### Get translation statistics
+
+**Endpoint:** `GET /api/admin/stats`
+
+Returns aggregated translation statistics including token counts, cost,
+latency, and model usage across all users.
+
+---
+
+
+### Authentication Flow
+
+1. **Register**: Receive `201` with `verificationRequired: true` and verify
+via the email link (or resend).
+2. **Login**: After verification, login sets the `token` cookie; JSON
+returns `{ user }` only.
+3. **Create an API Key** while authenticated (cookie sent with
+`credentials: 'include'`).
+4. **Use API Key** (`x-api-key` header) for programmatic API requests.
+5. **JWT cookies expire** after one hour: Log in again to refresh.
+
+---
+
+### Error Responses
 
 All endpoints may return error responses in the following format:
 
@@ -451,19 +904,115 @@ All endpoints may return error responses in the following format:
 
 ---
 
-## Authentication Flow
-
-1. **Register** — receive `201` with `verificationRequired: true` and verify via the email link (or resend).
-2. **Login** — after verification, login sets the `token` cookie; JSON returns `{ user }` only.
-3. **Create an API Key** while authenticated (cookie sent with `credentials: 'include'`).
-4. **Use API Key** (`x-api-key` header) for programmatic API requests.
-5. **JWT cookies expire** after one hour — log in again to refresh.
-
----
-
-## Rate Limiting & Best Practices
+### Rate Limiting & Best Practices
 
 - Always use HTTPS in production
 - Keep API keys secure and rotate regularly
 - Use appropriate scopes for API keys
 - Handle 500 errors gracefully with exponential backoff
+
+---
+
+## Database Schema
+
+The database uses PostgreSQL managed with Drizzle ORM. The schema is
+defined in `db/schema.ts` and migrations live in the `drizzle/` folder.
+
+### Core tables
+
+**`users`** - registered user accounts. Passwords are stored as bcrypt
+hashes. Includes email verification status and a `role` field
+(`user` or `admin`). All new accounts default to the `user` role.
+
+**`email_verification_tokens`** - one-time tokens sent by email on
+registration. Linked to a user, has an expiry timestamp, and is marked
+used after verification.
+
+**`api_keys`** - scoped API keys belonging to a user. The raw key is shown
+once on creation and stored as a SHA-256 hash. Each key has an array of
+scopes (`read`, `translate`, `write`).
+
+**`languages`** - supported translation languages. Each row has a `name`
+(e.g. `French`) and an ISO `code` (e.g. `fr`). Seeded via
+`npm run db:seed-languages`.
+
+**`translation_glossary`** - domain-specific terminology used to guide
+translation. Each term has a meaning, category, usage context, and a
+`doNotTranslate` flag. Loaded into memory at server startup as a fast
+lookup cache. Seeded via `npm run db:seed-glossary`.
+
+### Template tables
+
+**`templates`** - CSA self-assessment templates. Each row stores the
+subject, topic, grade level, version number, and active status.
+
+**`template_sections`** - the three sections of each template
+(`introduction`, `model_assessment`, `self_review`), stored as separate
+rows linked to a template by `templateId`.
+
+**`template_translations`** - cached translated versions of templates,
+stored as JSONB keyed by language code.
+
+### Translation tables
+
+**`source_documents`** - deduplicated source texts identified by a SHA-256
+hash. Allows the system to avoid re-translating identical content.
+
+**`translation_log`** - a record of every translation performed. Stores
+source and translated text, target language, model used, token counts,
+cost in USD, latency, and whether the result was served from cache.
+
+**`pdf_uploads`** - tracks every PDF file uploaded for translation,
+including its content hash, bucket object key, file size, and upload
+status (`uploaded`, `failed`, `skipped`).
+
+### Logging and validation tables
+
+**`template_generation_log`** - a record of every template generation
+attempt, including success/failure status, model used, token counts, cost,
+and latency.
+
+**`template_validations`** - background quality checks run after template
+generation. Stores whether the template passed validation and any issues
+found.
+
+**`translation_validations`** - results of back-translation quality checks.
+Stores the back-translated text, similarity score, reasoning, structural
+checks, and overall confidence score.
+
+
+---
+
+## Known Limitations and Notes
+
+### Translation quality
+
+Translation is performed by Cohere's `command-a-translate-08-2025` model
+with a domain-specific glossary injected into every prompt. While this
+significantly improves consistency for CSA terminology, translation quality
+may still vary across languages. This holds especially true for rarer languages,
+specialized academic terminology, and culturally nuanced expressions. The
+back-translation validate endpoint (`POST /api/translate/validate`) exists
+specifically to help assess translation quality.
+
+### Translation scoring
+
+The validate endpoint uses Cohere for back-translation and OpenAI for
+similarity scoring. However, note that LLM-based scoring is inherently approximate 
+and should be treated as a guide rather than a definitive quality measure.
+
+### Frontend
+
+The frontend in the `frontend/` folder is a demo interface only. It is not
+intended as a production UI. The real frontend has been built by a partner
+team and will integrate with this API.
+
+### Not yet tested in production classrooms
+
+The system has not been tested in a live classroom environment. All
+validation has been performed on simulated or sample data. Real-world
+performance, student engagement outcomes, and edge cases in authentic
+educational contexts remain unverified at this point.
+
+
+---

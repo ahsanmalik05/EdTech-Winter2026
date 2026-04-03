@@ -14,12 +14,14 @@ import { motion } from "motion/react";
 import {
   BarChart3,
   ChevronsUpDown,
+  ClipboardCheck,
   Globe,
   KeyRound,
   Languages,
   LogOut,
   ScrollText,
   Settings,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -27,6 +29,7 @@ import { useState } from "react";
 
 interface AppSidebarProps {
   userEmail: string;
+  userRole: 'user' | 'admin';
   apiKey: string;
   onLogout: () => void;
   isBusy?: boolean;
@@ -66,6 +69,7 @@ const transitionProps = {
 const NAV_ITEMS = [
   {
     section: "main",
+    label: "Tools",
     items: [
       { to: "/translate", label: "Translate", icon: Languages },
       { to: "/generate", label: "Generate", icon: Sparkles },
@@ -73,23 +77,40 @@ const NAV_ITEMS = [
   },
   {
     section: "history",
+    label: "My Activity",
     items: [
-      { to: "/logs", label: "Translation Logs", icon: ScrollText },
-      { to: "/template-logs", label: "Template Logs", icon: ScrollText },
-      { to: "/stats", label: "Stats", icon: BarChart3 },
+      { to: "/logs", label: "My Translations", icon: ScrollText },
+      { to: "/template-logs", label: "My Generations", icon: ScrollText },
     ],
   },
   {
     section: "config",
+    label: "Settings",
     items: [
       { to: "/languages", label: "Languages", icon: Globe },
     ],
   },
 ];
 
-export function AppSidebar({ userEmail, apiKey, onLogout }: AppSidebarProps) {
+const ADMIN_NAV_ITEMS = [
+  {
+    section: "admin",
+    label: "Admin",
+    items: [
+      { to: "/admin/stats", label: "Platform Stats", icon: BarChart3 },
+      { to: "/admin/translation-validations", label: "Translation QA", icon: ClipboardCheck },
+      { to: "/admin/generation-validations", label: "Generation QA", icon: ClipboardCheck },
+    ],
+  },
+];
+
+export function AppSidebar({ userEmail, userRole, apiKey, onLogout }: AppSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const location = useLocation();
+
+  const navItems = userRole === 'admin'
+    ? [...NAV_ITEMS, ...ADMIN_NAV_ITEMS]
+    : NAV_ITEMS;
 
   const initials = userEmail
     .split("@")[0]
@@ -134,9 +155,15 @@ export function AppSidebar({ userEmail, apiKey, onLogout }: AppSidebarProps) {
               <div className="flex grow flex-col">
                 <ScrollArea className="h-16 grow p-2">
                   <div className="flex w-full flex-col gap-0.5">
-                    {NAV_ITEMS.map((section, sIdx) => (
+                    {navItems.map((section, sIdx) => (
                       <div key={section.section}>
                         {sIdx > 0 && <Separator className="my-2 w-full" />}
+                        {!isCollapsed && section.label && (
+                          <div className="flex items-center gap-1.5 px-2 py-1">
+                            {section.section === 'admin' && <ShieldCheck className="size-3 text-zinc-300" />}
+                            <span className="text-[10px] font-medium text-zinc-300 uppercase tracking-wider">{section.label}</span>
+                          </div>
+                        )}
                         {section.items.map((item) => {
                           const isActive = location.pathname === item.to;
                           return (

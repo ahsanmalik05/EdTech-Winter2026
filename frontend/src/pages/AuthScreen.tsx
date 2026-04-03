@@ -4,7 +4,7 @@ import { cn } from '../lib/utils';
 import { api } from '../api/api';
 
 interface AuthScreenProps {
-  onAuth: (user: { id: number; email: string }) => void;
+  onAuth: (user: { id: number; email: string; role: 'user' | 'admin' }) => void;
 }
 
 export function AuthScreen({ onAuth }: AuthScreenProps) {

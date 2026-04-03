@@ -2,7 +2,6 @@ import express from "express";
 import {
   batchTranslate,
   batchTranslateStream,
-  getTranslationStats,
 } from "../controllers/translate.js";
 import { uploadPdfFile, uploadPdfFileStream } from "../controllers/upload.js";
 import { uploadPdf } from "../middleware/upload.js";
@@ -11,7 +10,6 @@ import { authMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.get("/stat", authMiddleware, getTranslationStats);
 router.post(
   "/validate",
   authMiddleware,

@@ -11,6 +11,7 @@ declare global {
       };
       user?: {
         id: number;
+        role: "user" | "admin";
       };
     }
   }

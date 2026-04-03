@@ -50,6 +50,20 @@
       "when": 1775090000000,
       "tag": "0006_pdf_dedup_and_translation_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775180000000,
+      "tag": "0007_admin_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775270000000,
+      "tag": "0008_validation_pending_status",
+      "breakpoints": true
     }
   ]
 }

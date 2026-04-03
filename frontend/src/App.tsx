@@ -17,20 +17,24 @@ import { TranslationStats } from './pages/TranslationStats';
 import { TranslationLog } from './pages/TranslationLog';
 import { TemplateGenerationLog } from './pages/TemplateGenerationLog';
 import { LanguageManager } from './pages/LanguageManager';
+import { AdminTranslationValidations } from './pages/AdminTranslationValidations';
+import { AdminGenerationValidations } from './pages/AdminGenerationValidations';
 import { cn } from './lib/utils';
 import { EmailVerificationResult } from './pages/EmailVerificationResult';
 
 interface AppUser {
   id: number;
   email: string;
+  role: 'user' | 'admin';
 }
 
-type PageKey = 'translate' | 'generate' | 'logs' | 'template-logs' | 'stats' | 'languages' | 'keys';
+type PageKey = 'translate' | 'generate' | 'logs' | 'template-logs' | 'languages' | 'keys' | 'admin-stats' | 'admin-translation-validations' | 'admin-generation-validations';
 
-const PAGES: PageKey[] = ['translate', 'generate', 'logs', 'template-logs', 'stats', 'languages', 'keys'];
+const PAGES: PageKey[] = ['translate', 'generate', 'logs', 'template-logs', 'languages', 'keys', 'admin-stats', 'admin-translation-validations', 'admin-generation-validations'];
 
 function pageFromPath(pathname: string): PageKey {
-  const path = pathname.slice(1) || 'translate';
+  const seg = pathname.slice(1) || 'translate';
+  const path = seg.startsWith('admin/') ? `admin-${seg.slice(6)}` : seg;
   if (PAGES.includes(path as PageKey)) return path as PageKey;
   return 'translate';
 }
@@ -79,6 +83,7 @@ function AppLayout({
     <div className="flex h-dvh w-full">
       <AppSidebar
         userEmail={user.email}
+        userRole={user.role}
         apiKey={apiKey}
         onLogout={onLogout}
         isBusy={isBusy}
@@ -99,9 +104,6 @@ function AppLayout({
           <div className={cn('contents', activePage !== 'template-logs' && 'hidden')}>
             {apiKey ? <TemplateGenerationLog /> : <NeedKeyPrompt />}
           </div>
-          <div className={cn('contents', activePage !== 'stats' && 'hidden')}>
-            {apiKey ? <TranslationStats /> : <NeedKeyPrompt />}
-          </div>
           <div className={cn('contents', activePage !== 'languages' && 'hidden')}>
             {apiKey ? <LanguageManager /> : <NeedKeyPrompt />}
           </div>
@@ -118,6 +120,21 @@ function AppLayout({
               }}
             />
           </div>
+
+          {/* Admin pages */}
+          {user.role === 'admin' && (
+            <>
+              <div className={cn('contents', activePage !== 'admin-stats' && 'hidden')}>
+                <TranslationStats />
+              </div>
+              <div className={cn('contents', activePage !== 'admin-translation-validations' && 'hidden')}>
+                <AdminTranslationValidations />
+              </div>
+              <div className={cn('contents', activePage !== 'admin-generation-validations' && 'hidden')}>
+                <AdminGenerationValidations />
+              </div>
+            </>
+          )}
         </div>
 
         <footer className="border-t border-zinc-100 py-6">
@@ -196,9 +213,17 @@ export function App() {
         <Route path="/generate" element={<div />} />
         <Route path="/logs" element={<div />} />
         <Route path="/template-logs" element={<div />} />
-        <Route path="/stats" element={<div />} />
         <Route path="/languages" element={<div />} />
         <Route path="/keys" element={<div />} />
+        <Route path="/admin/stats" element={
+          user?.role === 'admin' ? <div /> : <Navigate to="/translate" replace />
+        } />
+        <Route path="/admin/translation-validations" element={
+          user?.role === 'admin' ? <div /> : <Navigate to="/translate" replace />
+        } />
+        <Route path="/admin/generation-validations" element={
+          user?.role === 'admin' ? <div /> : <Navigate to="/translate" replace />
+        } />
         <Route
           path="*"
           element={<Navigate to={apiKey ? '/translate' : '/keys'} replace />}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   KeyRound,
   Plus,
@@ -7,7 +7,6 @@ import {
   Check,
   ArrowRight,
   Trash2,
-  Info,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { api } from '../api/api';
@@ -43,16 +42,35 @@ function saveStoredKeys(keys: StoredKey[]) {
   localStorage.setItem('stored_keys', JSON.stringify(keys));
 }
 
+function CopyKeyButton({ rawKey, label }: { rawKey: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(rawKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="p-1.5 rounded transition-colors text-zinc-300 hover:text-zinc-700"
+      aria-label={`Copy raw key for ${label}`}
+      title="Copy raw key"
+    >
+      {copied
+        ? <Check className="size-3.5" />
+        : <Copy className="size-3.5" />}
+    </button>
+  );
+}
+
 export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetupProps) {
   const [keys, setKeys] = useState<ApiKeyItem[]>([]);
   const [storedKeys, setStoredKeysState] = useState<StoredKey[]>(getStoredKeys);
   const [loadingKeys, setLoadingKeys] = useState(true);
   const [newLabel, setNewLabel] = useState('');
   const [creating, setCreating] = useState(false);
-  const [justCreated, setJustCreated] = useState<{
-    raw: string;
-    label: string;
-  } | null>(null);
+  const [justCreated, setJustCreated] = useState<{ raw: string; label: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [showManual, setShowManual] = useState(false);
@@ -100,7 +118,6 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
       });
       const rawKey: string = res.data.api_key.key;
       const keyId: number = res.data.api_key.id;
-
       updateStoredKeys([...storedKeys, { id: keyId, rawKey }]);
       setJustCreated({ raw: rawKey, label: newLabel.trim() });
       setNewLabel('');
@@ -122,9 +139,7 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
   const handleDelete = async (id: number) => {
     try {
       const stored = storedKeys.find((s) => s.id === id);
-      if (stored?.rawKey === activeKey) {
-        onDeactivateKey();
-      }
+      if (stored?.rawKey === activeKey) onDeactivateKey();
       updateStoredKeys(storedKeys.filter((s) => s.id !== id));
       await api.delete(`/api/keys/${id}`);
       fetchKeys();
@@ -134,102 +149,108 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
   };
 
   const handleToggle = (rawKey: string) => {
-    if (rawKey === activeKey) {
-      onDeactivateKey();
-    } else {
-      onActivateKey(rawKey);
-    }
+    if (rawKey === activeKey) onDeactivateKey();
+    else onActivateKey(rawKey);
   };
 
   return (
     <div className="max-w-2xl mx-auto w-full">
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-zinc-900 text-balance">
+
+      {/* ── Header ─────────────────────────────────────── */}
+      <div className="mb-10 pb-7 border-b border-zinc-100">
+        <p className="text-[10px] font-medium tracking-[0.18em] uppercase text-zinc-400 mb-2">
+          Configuration
+        </p>
+        <h2
+          className="text-[2rem] leading-tight text-zinc-900"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
           API Keys
         </h2>
-        <p className="text-zinc-400 mt-1 text-sm text-pretty">
-          Manage your API keys for translation and generation.
+        <p className="text-sm text-zinc-400 mt-1.5">
+          Manage and activate keys for translation and generation.
         </p>
       </div>
 
-      <div className="mb-6 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-        <Info className="size-4 text-amber-500 mt-0.5 shrink-0" />
-        <p className="text-xs text-amber-700 text-pretty">
-          <span className="font-medium">Demo mode:</span> Raw API keys are
-          stored in your browser so you can switch between them. In a production
-          app, keys are shown only once at creation and cannot be retrieved
-          again.
-        </p>
+      {/* ── Demo notice ────────────────────────────────── */}
+      <div className="mb-8 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3.5">
+        <span className="mt-px text-base leading-none select-none">⚠</span>
+        <div>
+          <p className="text-xs font-semibold text-amber-800 mb-0.5">Demo mode</p>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            Raw keys are saved in your browser so you can switch between them.
+            In the actual Mety Technology app our partner is working on, keys will be shown only once at creation.
+          </p>
+        </div>
       </div>
 
+      {/* ── Just-created banner ────────────────────────── */}
       {justCreated && (
-        <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-emerald-700">
+        <div className="mb-8 rounded-lg border border-emerald-200 bg-emerald-50 overflow-hidden">
+          <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-emerald-100">
+            <span className="text-[10px] font-semibold tracking-[0.14em] uppercase text-emerald-700">
               Key created — {justCreated.label}
             </span>
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-800 transition-colors"
+              className="flex items-center gap-1.5 text-[10px] font-medium tracking-[0.1em] uppercase text-emerald-600 hover:text-emerald-800 transition-colors"
             >
-              {copied ? (
-                <Check className="size-3" />
-              ) : (
-                <Copy className="size-3" />
-              )}
+              {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
-          <p className="font-mono text-xs text-emerald-800 bg-emerald-100 rounded px-3 py-2 break-all select-all">
-            {justCreated.raw}
-          </p>
-          <div className="mt-3 flex items-center gap-3">
+          <div className="px-5 py-3.5">
+            <p
+              className="text-xs text-emerald-900 break-all select-all leading-relaxed"
+              style={{ fontFamily: 'var(--font-mono)' }}
+            >
+              {justCreated.raw}
+            </p>
+          </div>
+          <div className="px-5 pb-4">
             {justCreated.raw === activeKey ? (
-              <span className="flex items-center gap-1.5 text-sm text-emerald-700 font-medium">
-                <Check className="size-3.5" />
-                Active
+              <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                <Check className="size-3" /> Active
               </span>
             ) : (
               <button
                 onClick={() => onActivateKey(justCreated.raw)}
-                className="flex items-center gap-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
               >
-                Use This Key
-                <ArrowRight className="size-3.5" />
+                Use this key <ArrowRight className="size-3" />
               </button>
             )}
           </div>
         </div>
       )}
 
+      {/* ── Error ──────────────────────────────────────── */}
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
-          <p className="text-red-600 text-sm">{error}</p>
+        <div className="mb-6 border-l-2 border-red-400 pl-4">
+          <p className="text-xs text-red-600">{error}</p>
         </div>
       )}
 
-      <div className="border border-zinc-200 rounded-lg p-5 mb-8">
-        <h3 className="text-sm font-medium text-zinc-900 mb-3">
-          Create New Key
-        </h3>
+      {/* ── Create form ────────────────────────────────── */}
+      <div className="mb-10">
+        <p className="text-[10px] font-medium tracking-[0.18em] uppercase text-zinc-400 mb-3">
+          New Key
+        </p>
         <div className="flex gap-2">
           <input
             type="text"
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             onKeyDown={(e) =>
-              e.key === 'Enter' &&
-              newLabel.trim() &&
-              !creating &&
-              handleCreate()
+              e.key === 'Enter' && newLabel.trim() && !creating && handleCreate()
             }
-            placeholder="Key label, e.g. Development"
-            className="flex-1 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-zinc-400 bg-white"
+            placeholder="Label — e.g. Production, Development"
+            className="flex-1 border border-zinc-200 rounded-md px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-zinc-900 bg-white transition-colors"
           />
           <button
             onClick={handleCreate}
             disabled={!newLabel.trim() || creating}
-            className="flex items-center gap-2 bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-100 disabled:text-zinc-300 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-zinc-900 text-white hover:bg-zinc-700 disabled:bg-zinc-100 disabled:text-zinc-300 rounded-md px-4 py-2.5 text-sm font-medium transition-colors"
           >
             {creating ? (
               <Loader2 className="size-4 animate-spin" />
@@ -243,110 +264,99 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
         </div>
       </div>
 
+      {/* ── Key list ───────────────────────────────────── */}
       <div>
-        <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">
+        <p className="text-[10px] font-medium tracking-[0.18em] uppercase text-zinc-400 mb-4">
           Your Keys
           {mergedKeys.length > 0 && (
-            <span className="ml-1.5 tabular-nums">({mergedKeys.length})</span>
+            <span className="ml-1.5 tabular-nums font-normal">({mergedKeys.length})</span>
           )}
-        </h3>
+        </p>
 
         {loadingKeys ? (
-          <div className="border border-zinc-200 rounded-lg p-8 flex items-center justify-center">
+          <div className="py-14 flex justify-center">
             <Loader2 className="size-4 text-zinc-300 animate-spin" />
           </div>
         ) : mergedKeys.length === 0 ? (
-          <div className="border border-zinc-200 rounded-lg p-8 text-center">
-            <KeyRound className="size-6 text-zinc-200 mx-auto mb-2" />
-            <p className="text-zinc-400 text-sm">No API keys yet</p>
-            <p className="text-zinc-300 text-xs mt-1">
-              Create one above to get started
-            </p>
+          <div className="border border-dashed border-zinc-200 rounded-lg py-14 text-center">
+            <KeyRound className="size-5 text-zinc-200 mx-auto mb-3" />
+            <p className="text-sm text-zinc-400">No API keys yet</p>
+            <p className="text-xs text-zinc-300 mt-1">Create one above to get started</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {mergedKeys.map((k) => {
+          <div className="rounded-lg border border-zinc-100 overflow-hidden">
+            {mergedKeys.map((k, i) => {
               const isActive = !!k.rawKey && k.rawKey === activeKey;
               const canActivate = !!k.rawKey;
 
               return (
                 <div
                   key={k.id}
-                  role={canActivate ? 'button' : undefined}
-                  tabIndex={canActivate ? 0 : undefined}
-                  onClick={() => canActivate && handleToggle(k.rawKey!)}
-                  onKeyDown={(e) =>
-                    canActivate &&
-                    (e.key === 'Enter' || e.key === ' ') &&
-                    handleToggle(k.rawKey!)
-                  }
+                  title={!canActivate ? 'Key not available locally — create keys in this session to activate them' : undefined}
                   className={cn(
-                    'border rounded-lg px-4 py-3 flex items-center gap-3 transition-colors',
+                    'group flex items-center gap-4 pl-4 pr-5 py-4 transition-colors',
+                    i > 0 && 'border-t border-zinc-100',
                     isActive
-                      ? 'border-emerald-200 bg-emerald-50'
-                      : canActivate
-                        ? 'border-zinc-200 hover:border-zinc-300 cursor-pointer'
-                        : 'border-zinc-100 opacity-60'
+                      ? 'bg-zinc-50 border-l-[3px] border-l-zinc-700'
+                      : 'bg-white border-l-[3px] border-l-transparent hover:bg-zinc-50'
                   )}
                 >
-                  <span
+                  {/* Selection dot */}
+                  <div
                     className={cn(
-                      'size-4 rounded-full border-2 shrink-0 flex items-center justify-center',
-                      isActive
-                        ? 'border-emerald-500'
-                        : canActivate
-                          ? 'border-zinc-300'
-                          : 'border-zinc-200'
+                      'shrink-0 size-2 rounded-full transition-colors',
+                      isActive ? 'bg-zinc-700' : 'bg-zinc-200'
                     )}
-                  >
-                    {isActive && (
-                      <span className="size-2 rounded-full bg-emerald-500" />
-                    )}
-                  </span>
+                  />
 
+                  {/* Label + key string */}
                   <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        'text-sm font-medium truncate',
-                        isActive ? 'text-emerald-800' : 'text-zinc-800'
-                      )}
-                    >
+                    <p className={cn('text-sm font-medium leading-none', isActive ? 'text-zinc-900' : 'text-zinc-900')}>
                       {k.label}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span
-                        className={cn(
-                          'text-xs font-mono',
-                          isActive ? 'text-emerald-600' : 'text-zinc-400'
-                        )}
-                      >
-                        mety_live_{k.publicKey}_••••
-                      </span>
-                      <span className="text-zinc-200">·</span>
-                      <span className="text-xs text-zinc-400">
-                        {new Date(k.createdAt).toLocaleDateString()}
-                      </span>
-                      {!canActivate && (
-                        <>
-                          <span className="text-zinc-200">·</span>
-                          <span className="text-xs text-zinc-300 italic">
-                            no local key
-                          </span>
-                        </>
-                      )}
-                    </div>
+                    <p
+                      className={cn('text-xs mt-1.5 leading-none', isActive ? 'text-zinc-500' : 'text-zinc-400')}
+                      style={{ fontFamily: 'var(--font-mono)' }}
+                    >
+                      mety_live_{k.publicKey}_•••• · {new Date(k.createdAt).toLocaleDateString()}
+                    </p>
                   </div>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(k.id);
-                    }}
-                    className="text-zinc-300 hover:text-red-400 transition-colors p-1.5"
-                    aria-label={`Delete ${k.label}`}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+                  {/* Active label */}
+                  {isActive && (
+                    <span
+                      className="text-[10px] font-semibold tracking-[0.14em] uppercase text-zinc-700 shrink-0"
+                    >
+                      Active
+                    </span>
+                  )}
+
+                  {/* Actions — always visible */}
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {canActivate && (
+                      <button
+                        onClick={() => handleToggle(k.rawKey!)}
+                        className={cn(
+                          'text-[11px] font-medium px-2.5 py-1 rounded transition-colors',
+                          isActive
+                            ? 'text-zinc-600 hover:text-red-500'
+                            : 'text-zinc-500 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200'
+                        )}
+                      >
+                        {isActive ? 'Deactivate' : 'Use Key'}
+                      </button>
+                    )}
+                    {canActivate && (
+                      <CopyKeyButton rawKey={k.rawKey!} label={k.label} />
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(k.id); }}
+                      className="p-1.5 rounded transition-colors text-zinc-300 hover:text-red-400"
+                      aria-label={`Delete ${k.label}`}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -354,16 +364,20 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
         )}
       </div>
 
+      {/* ── Manual key active (not in list) ───────────── */}
       {activeKey && !activeKeyInList && (
-        <div className="mt-6 flex items-center justify-between bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <span className="size-2 rounded-full bg-emerald-400" />
-            <span className="text-sm font-medium text-zinc-700">
-              Manual key active
-            </span>
-            <span className="text-xs font-mono text-zinc-400">
-              {activeKey.slice(0, 24)}••••
-            </span>
+        <div className="mt-6 flex items-center justify-between border border-zinc-200 rounded-lg px-5 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="size-2 rounded-full bg-zinc-700 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-zinc-900 leading-none">Manual key active</p>
+              <p
+                className="text-xs text-zinc-400 mt-1 leading-none"
+                style={{ fontFamily: 'var(--font-mono)' }}
+              >
+                {activeKey.slice(0, 24)}••••
+              </p>
+            </div>
           </div>
           <button
             onClick={onDeactivateKey}
@@ -374,31 +388,29 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
         </div>
       )}
 
-      <div className="mt-8 pt-6 border-t border-zinc-100">
+      {/* ── Manual entry ──────────────────────────────── */}
+      <div className="mt-10 pt-6 border-t border-zinc-100">
         {showManual ? (
           <div>
-            <h3 className="text-sm font-medium text-zinc-900 mb-2">
+            <p className="text-[10px] font-medium tracking-[0.18em] uppercase text-zinc-400 mb-3">
               Enter Existing Key
-            </h3>
+            </p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={manualKey}
                 onChange={(e) => setManualKey(e.target.value)}
                 onKeyDown={(e) =>
-                  e.key === 'Enter' &&
-                  manualKey.trim() &&
-                  onActivateKey(manualKey.trim())
+                  e.key === 'Enter' && manualKey.trim() && onActivateKey(manualKey.trim())
                 }
                 placeholder="mety_live_..."
-                className="flex-1 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 font-mono placeholder:text-zinc-300 focus:outline-none focus:border-zinc-400 bg-white"
+                className="flex-1 border border-zinc-200 rounded-md px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:border-zinc-900 bg-white transition-colors"
+                style={{ fontFamily: 'var(--font-mono)' }}
               />
               <button
-                onClick={() =>
-                  manualKey.trim() && onActivateKey(manualKey.trim())
-                }
+                onClick={() => manualKey.trim() && onActivateKey(manualKey.trim())}
                 disabled={!manualKey.trim()}
-                className="flex items-center gap-2 bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-100 disabled:text-zinc-300 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                className="flex items-center gap-2 bg-zinc-900 text-white hover:bg-zinc-700 disabled:bg-zinc-100 disabled:text-zinc-300 rounded-md px-4 py-2.5 text-sm font-medium transition-colors"
               >
                 Connect
                 <ArrowRight className="size-3.5" />
@@ -408,7 +420,7 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
         ) : (
           <button
             onClick={() => setShowManual(true)}
-            className="text-zinc-400 hover:text-zinc-600 text-sm transition-colors"
+            className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
           >
             Have a key from elsewhere? Enter it manually →
           </button>
@@ -417,3 +429,4 @@ export function KeySetup({ onActivateKey, activeKey, onDeactivateKey }: KeySetup
     </div>
   );
 }
+
