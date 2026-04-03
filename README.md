@@ -120,6 +120,7 @@ For developers who want to run the project locally, please continue reading belo
 │   └── config.ts           # Environment variable loading and validation
 ├── controllers/            # Request handlers — one file per route group
 ├── middleware/
+│   ├── admin.ts            # Admin role authorization middleware
 │   ├── api_key.ts          # API key validation middleware
 │   ├── auth.ts             # JWT cookie authentication middleware
 │   └── upload.ts           # Multer PDF upload configuration
@@ -173,6 +174,10 @@ You will also need accounts and API keys for the following external services:
 - **OpenAI** for template generation and translation fallback
   ([platform.openai.com](https://platform.openai.com))
 - **Resend** for email verification emails ([resend.com](https://resend.com))
+
+> **Optional:** A Railway Bucket (S3-compatible) for PDF archiving. The
+> application works without this — PDFs are processed and deleted locally
+> if no bucket is configured.
 
 ---
 
