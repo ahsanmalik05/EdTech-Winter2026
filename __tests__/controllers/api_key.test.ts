@@ -103,7 +103,8 @@ describe('createApiKey', () => {
       mockReq({
         body: { label: 'test', scopes: ['read'] },
         headers: { authorization: 'Bearer tok' },
-      }),
+        user: { id: 1 },
+      } as any),
       res,
     );
     expect(res.status).toHaveBeenCalledWith(201);
@@ -122,7 +123,8 @@ describe('createApiKey', () => {
       mockReq({
         body: { label: 'test', scopes: ['read'] },
         headers: { authorization: 'Bearer tok' },
-      }),
+        user: { id: 1 },
+      } as any),
       res,
     );
     expect(res.status).toHaveBeenCalledWith(500);
@@ -147,7 +149,7 @@ describe('getApiKeys', () => {
 
     const res = mockRes();
     await getApiKeys(
-      mockReq({ headers: { authorization: 'Bearer tok' } }),
+      mockReq({ headers: { authorization: 'Bearer tok' }, user: { id: 1 } } as any),
       res,
     );
     expect(res.status).toHaveBeenCalledWith(200);
@@ -155,9 +157,9 @@ describe('getApiKeys', () => {
   });
 
   it('returns 500 on error', async () => {
-    mockVerify.mockImplementation(() => { throw new Error('bad'); });
+    mockDbSelect.mockReturnValue({ where: vi.fn().mockRejectedValue(new Error('db fail')) });
     const res = mockRes();
-    await getApiKeys(mockReq({ headers: { authorization: 'Bearer bad' } }), res);
+    await getApiKeys(mockReq({ headers: { authorization: 'Bearer bad' }, user: { id: 1 } } as any), res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
@@ -168,18 +170,22 @@ describe('getApiKeyData', () => {
 
   it('returns 400 when id is NaN', async () => {
     const res = mockRes();
-    await getApiKeyData(mockReq({ params: { id: 'abc' } }), res);
+    await getApiKeyData(mockReq({ params: { id: 'abc' }, user: { id: 1 } } as any), res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  it('returns 400 when x-api-key header is missing', async () => {
+  it('returns 404 when key not found', async () => {
+    mockDbSelect.mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue([]),
+      }),
+    });
     const res = mockRes();
-    await getApiKeyData(mockReq({ params: { id: '5' }, headers: {} }), res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Missing API key header' });
+    await getApiKeyData(mockReq({ params: { id: '5' }, user: { id: 1 } } as any), res);
+    expect(res.status).toHaveBeenCalledWith(404);
   });
 
-  it('returns 404 when key not found or hash mismatch', async () => {
+  it('returns 404 when key not found by id and user', async () => {
     mockDbSelect.mockReturnValue({
       where: vi.fn().mockReturnValue({
         limit: vi.fn().mockResolvedValue([]),
@@ -188,21 +194,17 @@ describe('getApiKeyData', () => {
 
     const res = mockRes();
     await getApiKeyData(
-      mockReq({ params: { id: '5' }, headers: { 'x-api-key': 'some_key' } }),
+      mockReq({ params: { id: '5' }, user: { id: 1 } } as any),
       res,
     );
     expect(res.status).toHaveBeenCalledWith(404);
   });
 
   it('returns 200 with api key data on success', async () => {
-    const crypto = await import('crypto');
-    const rawKey = 'test_key_123';
-    const hash = crypto.createHash('sha256').update(rawKey).digest('hex');
-
     mockDbSelect.mockReturnValue({
       where: vi.fn().mockReturnValue({
         limit: vi.fn().mockResolvedValue([{
-          id: 5, key: hash, label: 'test', scopes: ['read'],
+          id: 5, key: 'hash', label: 'test', scopes: ['read'],
           users_id: 1, publicKey: 'pk', createdAt: new Date(), updatedAt: new Date(),
         }]),
       }),
@@ -210,7 +212,7 @@ describe('getApiKeyData', () => {
 
     const res = mockRes();
     await getApiKeyData(
-      mockReq({ params: { id: '5' }, headers: { 'x-api-key': rawKey } }),
+      mockReq({ params: { id: '5' }, user: { id: 1 } } as any),
       res,
     );
     expect(res.status).toHaveBeenCalledWith(200);
@@ -223,14 +225,14 @@ describe('updateApiKey', () => {
 
   it('returns 400 when id is invalid', async () => {
     const res = mockRes();
-    await updateApiKey(mockReq({ params: { id: 'abc' } }), res);
+    await updateApiKey(mockReq({ params: { id: 'abc' }, user: { id: 1 } } as any), res);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ error: 'Invalid ID' });
   });
 
   it('returns 400 when nothing to update', async () => {
     const res = mockRes();
-    await updateApiKey(mockReq({ params: { id: '1' }, body: {} }), res);
+    await updateApiKey(mockReq({ params: { id: '1' }, body: {}, user: { id: 1 } } as any), res);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ error: 'Nothing to update' });
   });
@@ -242,7 +244,7 @@ describe('updateApiKey', () => {
       }),
     });
     const res = mockRes();
-    await updateApiKey(mockReq({ params: { id: '1' }, body: { label: 'new' } }), res);
+    await updateApiKey(mockReq({ params: { id: '1' }, body: { label: 'new' }, user: { id: 1 } } as any), res);
     expect(res.status).toHaveBeenCalledWith(404);
   });
 
@@ -257,7 +259,7 @@ describe('updateApiKey', () => {
       }),
     });
     const res = mockRes();
-    await updateApiKey(mockReq({ params: { id: '1' }, body: { label: 'new' } }), res);
+    await updateApiKey(mockReq({ params: { id: '1' }, body: { label: 'new' }, user: { id: 1 } } as any), res);
     expect(res.status).toHaveBeenCalledWith(200);
   });
 });
@@ -268,7 +270,7 @@ describe('deleteApiKey', () => {
 
   it('returns 400 when id is invalid', async () => {
     const res = mockRes();
-    await deleteApiKey(mockReq({ params: { id: 'abc' } }), res);
+    await deleteApiKey(mockReq({ params: { id: 'abc' }, user: { id: 1 } } as any), res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
@@ -277,7 +279,7 @@ describe('deleteApiKey', () => {
       returning: vi.fn().mockResolvedValue([]),
     });
     const res = mockRes();
-    await deleteApiKey(mockReq({ params: { id: '1' } }), res);
+    await deleteApiKey(mockReq({ params: { id: '1' }, user: { id: 1 } } as any), res);
     expect(res.status).toHaveBeenCalledWith(404);
   });
 
@@ -286,7 +288,7 @@ describe('deleteApiKey', () => {
       returning: vi.fn().mockResolvedValue([{ id: 1 }]),
     });
     const res = mockRes();
-    await deleteApiKey(mockReq({ params: { id: '1' } }), res);
+    await deleteApiKey(mockReq({ params: { id: '1' }, user: { id: 1 } } as any), res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ message: 'API key deleted successfully' });
   });

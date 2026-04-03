@@ -31,13 +31,13 @@ describe('apiKeyMiddleware', () => {
 
   it('calls next() for /api/auth paths', async () => {
     const next = vi.fn();
-    await apiKeyMiddleware(mockReq({ path: '/api/auth/login' }), mockRes(), next);
+    await apiKeyMiddleware(mockReq({ path: '/auth/login' }), mockRes(), next);
     expect(next).toHaveBeenCalled();
   });
 
-  it('calls next() for /api/keys paths', async () => {
+  it('calls next() for /keys paths', async () => {
     const next = vi.fn();
-    await apiKeyMiddleware(mockReq({ path: '/api/keys' }), mockRes(), next);
+    await apiKeyMiddleware(mockReq({ path: '/keys' }), mockRes(), next);
     expect(next).toHaveBeenCalled();
   });
 

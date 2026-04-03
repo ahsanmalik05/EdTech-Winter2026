@@ -195,9 +195,8 @@ describe("batchTranslate controller", () => {
 
     expect(mockRecordPdfUpload).toHaveBeenCalledWith(
       expect.objectContaining({
-        flow: "batch",
-        fieldName: "pdfs",
         contentHash: "file-hash",
+        originalName: "worksheet.pdf",
       }),
     );
     expect(mockTranslateBatch).toHaveBeenCalledWith(
