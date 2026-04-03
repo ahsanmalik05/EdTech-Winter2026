@@ -47,15 +47,16 @@ After submitting, you will receive a verification email from `onboarding@metytec
 
 ### Step 2 — Create an API key
 
-After signing in you will be prompted to create your first API key. Navigate to the **API Keys** page from the sidebar if you are not redirected there automatically.
+After signing in you will be prompted to create your first API key. Navigate to the **API Keys** page from the sidebar if you are not redirected there automatically. You will see an empty keys page to start.
 
-1. Enter a label for your key (e.g. `Development`) in the **Create New Key** field and click **+ Create**.
-2. Your full key is shown exactly once — copy it somewhere safe. It cannot be retrieved again.
-3. Click **Use This Key** to set it as your active key.
+![API Keys page — no keys yet](images/KeyCreation.png)
 
-![API key just created](images/Key.png)
+1. Enter a label for your key (e.g. `Development`) in the **New Key** field and click **+ Create**.
+2. Your full key is revealed — copy it somewhere safe. It cannot be retrieved again. Click **Use this key** to activate it immediately.
 
-Once active, the key is highlighted in green and will be used automatically by the demo interface for all requests.
+![API key revealed after creation](images/Key.png)
+
+3. Once active, the key shows **ACTIVE** in the list and will be used automatically by the demo interface for all requests.
 
 ![API key set as active](images/ActiveKey.png)
 
